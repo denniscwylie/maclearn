@@ -14,19 +14,19 @@ ysim = simDat$y
 kmSim = kmeans(xsim, centers=2)
 
 kmplot = function(xy) {
-	x = xy$x
-	y = xy$y
-	km = kmeans(x, centers=2)
-	ggdata = data.frame(x, cluster=factor(km$cluster), y=y)
-	ggobj = ggplot(data=ggdata, mapping=aes(
-		x = g1,
-		y = g2,
-		color = cluster,
-		shape = y
-	)) + theme_classic()
-	ggobj = ggobj + geom_point(size=3)
-	ggobj = ggobj + scale_shape_manual(values=c(6, 17))
-	print(ggobj)
+    x = xy$x
+    y = xy$y
+    km = kmeans(x, centers=2)
+    ggdata = data.frame(x, cluster=factor(km$cluster), y=y)
+    ggobj = ggplot(data=ggdata, mapping=aes(
+        x = g1,
+        y = g2,
+        color = cluster,
+        shape = y
+    )) + theme_classic()
+    ggobj = ggobj + geom_point(size=3)
+    ggobj = ggobj + scale_shape_manual(values=c(6, 17))
+    print(ggobj)
 }
 
 kmplot(simulate2Group(n=40, p=2, effect=c(10, 0)))
@@ -58,7 +58,7 @@ plot(ghcSim)
 ## -----------------------------------------------------------------
 heatY = data.frame(row.names=rownames(xsim2), group=ysim2)
 pheatmap(t(xsim2), annotation=heatY,
-		annotation_colors=list(group=c(A=rgb(1, 0, 0.4), B='black')))
+        annotation_colors=list(group=c(A=rgb(1, 0, 0.4), B='black')))
 
 
 ## -----------------------------------------------------------------
@@ -73,19 +73,19 @@ garbage = dev.off()
 
 load("bottomlyGeneSyms.RData")
 bottomlyHighVar = colnames(xnorms$bottomly)[
-		apply(xnorms$bottomly, 2, sd) > 1.25]
+        apply(xnorms$bottomly, 2, sd) > 1.25]
 heatX = t(xnorms$bottomly[ , bottomlyHighVar])
 rownames(heatX) = ifelse(
-	rownames(heatX) %in% names(bottomlyGeneSyms),
-	bottomlyGeneSyms[rownames(heatX)],
-	rownames(heatX)
+    rownames(heatX) %in% names(bottomlyGeneSyms),
+    bottomlyGeneSyms[rownames(heatX)],
+    rownames(heatX)
 )
 heatY = data.frame(row.names=colnames(heatX), strain=ys$bottomly)
 pdf("BottomlyHighVarHeatmap.pdf", h=8, w=8*1.3, onefile=FALSE)
 pheatmap(
-	heatX,
-	annotation_col = heatY,
-	annotation_colors = list(
-	strain = c('C57BL/6J'='black', 'DBA/2J'=rgb(1, 0, 0.4)))
+    heatX,
+    annotation_col = heatY,
+    annotation_colors = list(
+    strain = c('C57BL/6J'='black', 'DBA/2J'=rgb(1, 0, 0.4)))
 )
 garbage = dev.off()

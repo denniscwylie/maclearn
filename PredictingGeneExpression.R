@@ -11,11 +11,11 @@ source("MaclearnUtilities.R")
 ## load Patel data
 ## -----------------------------------------------------------------
 readTab = function(file) {
-	if (grepl("gz$", file)) {
-		file = gzfile(file)
-	}
-	read.table(file, sep="\t",
-			header=TRUE, row.names=1, check.names=FALSE)
+    if (grepl("gz$", file)) {
+        file = gzfile(file)
+    }
+    read.table(file, sep="\t",
+            header=TRUE, row.names=1, check.names=FALSE)
 }
 
 x = data.frame(t(readTab(
@@ -91,7 +91,7 @@ brca1Modelers2 = lapply(X=nFeats, FUN=function(n) {
 
 set.seed(123)
 brca1CV2 = lapply(X=brca1Modelers2,
-		FUN=function(m) {train(m, x0, y)})
+        FUN=function(m) {train(m, x0, y)})
 
 lambdaMins2 = sapply(brca1CV2, FUN=function(z) {
     z$finalModel[[2]]$fit$lambda.min
@@ -120,7 +120,7 @@ brca1Modelers1 = lapply(X=nFeats, FUN=function(n) {
 
 set.seed(123)
 brca1CV1 = lapply(X=brca1Modelers1,
-		FUN=function(m) {train(m, x0, y)})
+        FUN=function(m) {train(m, x0, y)})
 
 lambdaMins1 = sapply(brca1CV1, FUN=function(z) {
     z$finalModel[[2]]$fit$lambda.min

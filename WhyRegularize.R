@@ -31,11 +31,11 @@ coef(l1mod)
 ## load Hess data
 ## -----------------------------------------------------------------
 readTab = function(file) {
-	if (grepl("gz$", file)) {
-		file = gzfile(file)
-	}
-	read.table(file, sep="\t",
-			header=TRUE, row.names=1, check.names=FALSE)
+    if (grepl("gz$", file)) {
+        file = gzfile(file)
+    }
+    read.table(file, sep="\t",
+            header=TRUE, row.names=1, check.names=FALSE)
 }
 
 x = data.frame(t(readTab(
@@ -55,10 +55,10 @@ logisticCoef = coef(logisticFit[[2]]$fit)
 heatX = x[ , setdiff(rownames(logisticCoef), "(Intercept)")]
 heatY = data.frame(row.names=names(y), Group=y)
 pheatmap(
-	heatX,
-	annotation_row = heatY,
-	annotation_color = list(Group=c(pCR="black", RD="gray")),
-	show_rownames=FALSE
+    heatX,
+    annotation_row = heatY,
+    annotation_color = list(Group=c(pCR="black", RD="gray")),
+    show_rownames=FALSE
 )
 
 ggpairs(data.frame(heatX, y=y))

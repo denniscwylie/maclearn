@@ -11,10 +11,10 @@ source("MaclearnUtilities.R")
 load("prepared_datasets.RData")
 
 ynums = lapply(ys, function(y) {
-	ynames = names(y)
-	y = as.numeric(y) - 1
-	names(y) = ynames
-	return(y)
+    ynames = names(y)
+    y = as.numeric(y) - 1
+    names(y) = ynames
+    return(y)
 })
 
 
@@ -50,19 +50,19 @@ plot(tBotAll$pearson, tBotAll$p.value, log='y', pch=16, cex=0.5)
 ## t tests for all genes in each set
 ## -----------------------------------------------------------------
 tTestResults = mapply(
-	FUN = function(x, y) {
-		out = colttests(as.matrix(x), y)
-		out$q.value = p.adjust(out$p.value, method="fdr")
-		out$pearson = as.numeric(
-			(t(scale(as.numeric(y))) %*% as.matrix(scale(x))) /
-			(length(y)-1)
-		)
-		out = out[order(out$p.value), ]
-		return(out)
-	},
-	xnorms,
-	ys,
-	SIMPLIFY = FALSE
+    FUN = function(x, y) {
+        out = colttests(as.matrix(x), y)
+        out$q.value = p.adjust(out$p.value, method="fdr")
+        out$pearson = as.numeric(
+            (t(scale(as.numeric(y))) %*% as.matrix(scale(x))) /
+            (length(y)-1)
+        )
+        out = out[order(out$p.value), ]
+        return(out)
+    },
+    xnorms,
+    ys,
+    SIMPLIFY = FALSE
 )
 
 
@@ -73,58 +73,58 @@ lapply(tTestResults, head)
 
 
 boxstrip(
-	xnorms$bottomly[ rownames(tTestResults$bottomly)[1:9] ],
-	ys$bottomly,
-	colscale = c("black", "red")
+    xnorms$bottomly[ rownames(tTestResults$bottomly)[1:9] ],
+    ys$bottomly,
+    colscale = c("black", "red")
 )
 
 ggpairsXY(
-	xnorms$bottomly[ rownames(tTestResults$bottomly)[1:3] ],
-	ys$bottomly,
-	colscale = c("black", "red"),
-	yname = "strain"
+    xnorms$bottomly[ rownames(tTestResults$bottomly)[1:3] ],
+    ys$bottomly,
+    colscale = c("black", "red"),
+    yname = "strain"
 )
 
 
 boxstrip(
-	xnorms$patel[ rownames(tTestResults$patel)[1:9] ],
-	ys$patel,
-	colscale = c("black", "red")
+    xnorms$patel[ rownames(tTestResults$patel)[1:9] ],
+    ys$patel,
+    colscale = c("black", "red")
 )
 
 ggpairsXY(
-	xnorms$patel[ rownames(tTestResults$patel)[1:3] ],
-	ys$patel,
-	colscale = c("black", "red"),
-	yname = "SubType"
+    xnorms$patel[ rownames(tTestResults$patel)[1:3] ],
+    ys$patel,
+    colscale = c("black", "red"),
+    yname = "SubType"
 )
 
 
 boxstrip(
-	xnorms$montastier[ rownames(tTestResults$montastier)[1:9] ],
-	ys$montastier,
-	colscale = c("black", "red")
+    xnorms$montastier[ rownames(tTestResults$montastier)[1:9] ],
+    ys$montastier,
+    colscale = c("black", "red")
 )
 
 ggpairsXY(
-	xnorms$montastier[ rownames(tTestResults$montastier)[1:3] ],
-	ys$montastier,
-	colscale = c("black", "red"),
-	yname = "Time"
+    xnorms$montastier[ rownames(tTestResults$montastier)[1:3] ],
+    ys$montastier,
+    colscale = c("black", "red"),
+    yname = "Time"
 )
 
 
 boxstrip(
-	xnorms$hess[ rownames(tTestResults$hess)[1:9] ],
-	ys$hess,
-	colscale = c("black", "red")
+    xnorms$hess[ rownames(tTestResults$hess)[1:9] ],
+    ys$hess,
+    colscale = c("black", "red")
 )
 
 ggpairsXY(
-	xnorms$hess[ rownames(tTestResults$hess)[1:3] ],
-	ys$hess,
-	colscale = c("black", "red"),
-	yname = "pCR"
+    xnorms$hess[ rownames(tTestResults$hess)[1:3] ],
+    ys$hess,
+    colscale = c("black", "red"),
+    yname = "pCR"
 )
 
 
@@ -132,26 +132,26 @@ ggpairsXY(
 ## generate fancy p.value vs pearson correlation plot-
 ## -----------------------------------------------------------------
 ggdata = do.call(
-	rbind,
-	args = lapply(X=names(tTestResults), FUN=function(setname) {
-		tres = tTestResults[[setname]]
-		data.frame(
-			gene = rownames(tres),
-			set = paste0(setname, " (", nrow(xnorms[[setname]]), ")"),
-			tres
-		)
-	})
+    rbind,
+    args = lapply(X=names(tTestResults), FUN=function(setname) {
+        tres = tTestResults[[setname]]
+        data.frame(
+            gene = rownames(tres),
+            set = paste0(setname, " (", nrow(xnorms[[setname]]), ")"),
+            tres
+        )
+    })
 )
 ggdata$`|t|` = abs(ggdata$statistic)
 ggdata$set = factor(as.character(ggdata$set),
-		levels=levels(ggdata$set)[order(sapply(xnorms, nrow))])
+        levels=levels(ggdata$set)[order(sapply(xnorms, nrow))])
 
 ggobj = ggplot(data=ggdata,
-		mapping=aes(x=pearson, y=`|t|`, color=set))
+        mapping=aes(x=pearson, y=`|t|`, color=set))
 ggobj = ggobj + ylim(c(0, 10))
 ggobj = ggobj + geom_line()
 ggobj = ggobj + scale_color_manual(
-		values=c("darkred", "red", "darkgray", "black"))
+        values=c("darkred", "red", "darkgray", "black"))
 ggobj = ggobj + theme_bw()
 pdf("TStatVsPearson.pdf", h=5, w=5*1.45)
 print(ggobj)
@@ -162,11 +162,11 @@ garbage = dev.off()
 ## generate fancy p.value vs pearson correlation plot-
 ## -----------------------------------------------------------------
 ggobj = ggplot(data=ggdata,
-		mapping=aes(x=pearson, y=p.value, color=set))
+        mapping=aes(x=pearson, y=p.value, color=set))
 ggobj = ggobj + scale_y_log10()
 ggobj = ggobj + geom_line()
 ggobj = ggobj + scale_color_manual(
-		values=c("darkred", "red", "darkgray", "black"))
+        values=c("darkred", "red", "darkgray", "black"))
 ggobj = ggobj + theme_bw()
 ## pdf("PValVsPearson.pdf", h=5, w=5*1.45)
 print(ggobj)
@@ -178,12 +178,12 @@ print(ggobj)
 ## complementary features
 ## -----------------------------------------------------------------
 compResults = gramSchmidtSelect(x=xnorms$patel, y=ys$patel,
-		g="NAMPT")
+        g="NAMPT")
 compFeats = names(compResults[
-		order(abs(compResults), decreasing=TRUE)])[1:1000]
+        order(abs(compResults), decreasing=TRUE)])[1:1000]
 compR2 = sapply(compFeats, function(g) {
-	summary(lm(ynums$patel ~ xnorms$patel$NAMPT +
-			xnorms$patel[[g]]))$r.squared
+    summary(lm(ynums$patel ~ xnorms$patel$NAMPT +
+            xnorms$patel[[g]]))$r.squared
 })
 plot(compR2, type="l")
 

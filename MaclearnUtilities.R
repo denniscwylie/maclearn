@@ -1,32 +1,32 @@
 rowSds = function(x, na.rm=FALSE) {
-	n = ncol(x)
-	return(sqrt((n/(n-1)) *
-			(rowMeans(x*x, na.rm=na.rm) - rowMeans(x, na.rm=na.rm)^2)))
+    n = ncol(x)
+    return(sqrt((n/(n-1)) *
+            (rowMeans(x*x, na.rm=na.rm) - rowMeans(x, na.rm=na.rm)^2)))
 }
 colSds = function(x, na.rm=FALSE) {
-	n = nrow(x)
-	return(sqrt((n/(n-1)) *
-			(colMeans(x*x, na.rm=na.rm) - colMeans(x, na.rm=na.rm)^2)))
+    n = nrow(x)
+    return(sqrt((n/(n-1)) *
+            (colMeans(x*x, na.rm=na.rm) - colMeans(x, na.rm=na.rm)^2)))
 }
 
 
 
 svdForPca = function(
-		x,
-		center=c("both", "row", "col", "none"),
-		scale=c("none", "row", "col")) {
-	center = match.arg(center)
-	scale = match.arg(scale)
+        x,
+        center=c("both", "row", "col", "none"),
+        scale=c("none", "row", "col")) {
+    center = match.arg(center)
+    scale = match.arg(scale)
     if (center %in% c("row", "both")) {
         x = sweep(x, 1, STATS=rowMeans(x))
     }
     if (center %in% c("column", "both")) {
         x = sweep(x, 2, STATS=colMeans(x))
     }
-	if (scale == "row") {
-		x = sweep(x, 1, STATS=rowSds(x), FUN=`/`)
+    if (scale == "row") {
+        x = sweep(x, 1, STATS=rowSds(x), FUN=`/`)
     } else if (scale == "column") {
-		x = sweep(x, 2, STATS=colSds(x), FUN=`/`)
+        x = sweep(x, 2, STATS=colSds(x), FUN=`/`)
     }
     out = svd(x)
     dord = order(out$d, decreasing=TRUE)
@@ -85,8 +85,8 @@ ggpca = function(
     xsvd = svdForPca(x, center=center, scale=scale)
     rsf = max(xsvd$u[ , 1]) - min(xsvd$u[ , 1])
     csf = max(xsvd$v[ , 1]) - min(xsvd$v[ , 1])
-	sizeRange = sort(c(csize, rsize))
-	alphaRange = sort(c(calpha, ralpha))
+    sizeRange = sort(c(csize, rsize))
+    alphaRange = sort(c(calpha, ralpha))
     ggdata = data.frame(
         PC1 = xsvd$u[ , 1] / rsf,
         PC2 = xsvd$u[ , 2] / rsf,
@@ -108,10 +108,10 @@ ggpca = function(
             cscores = cdata$PC1^2 + cdata$PC2^2
             names(cscores) = colnames(x)
             keep = names(sort(cscores, decreasing=TRUE)[1:cshow])
-			cdata[!colnames(x) %in% keep, "label"] = ""
-			cdata[!colnames(x) %in% keep, "alpha"] = 0.1
-			alphaRange = c(min(alphaRange[1], 0.1),
-					max(alphaRange[2], 0.1))
+            cdata[!colnames(x) %in% keep, "label"] = ""
+            cdata[!colnames(x) %in% keep, "alpha"] = 0.1
+            alphaRange = c(min(alphaRange[1], 0.1),
+                    max(alphaRange[2], 0.1))
         }
         ggdata = rbind(cdata, ggdata)
     }
@@ -136,7 +136,7 @@ ggpca = function(
     ggobj = ggobj + geom_text(vjust=-1.1, show.legend=FALSE, size=lsize)
     if (missing(colscale) && (length(unique(ggdata$class)) < 8)) {
         colscale = c("gray", "darkslategray", "goldenrod", "lightseagreen",
-				"orangered", "dodgerblue2", "darkorchid4")[
+                "orangered", "dodgerblue2", "darkorchid4")[
                 1:length(unique(ggdata$class))]
         if (length(colscale) == 2 && cshow > 0) {colscale = c("darkgray", "black")}
         if (length(colscale) == 2 && cshow == 0) {colscale = c("black", "red")}
@@ -413,23 +413,23 @@ ggpairs0 = function(data, ...,
 
 
 gramSchmidtSelect = function(x, y, g=NULL) {
-	dx = as.matrix(sweep(
-		x = x,
-		MARGIN = 2,
-		STATS = colMeans(x),
-		FUN = `-`
-	))
-	y = as.numeric(y)
-	dy = y - mean(y)
-	pgtotal = diag(1, nrow(x))
-	for (gel in g) {
-		dxg = as.numeric(scale(as.numeric(pgtotal %*% dx[ , gel])))
-		pg = diag(1, nrow(x)) - (outer(dxg, dxg) / sum(dxg^2))
-		pgtotal = pg %*% pgtotal
+    dx = as.matrix(sweep(
+        x = x,
+        MARGIN = 2,
+        STATS = colMeans(x),
+        FUN = `-`
+    ))
+    y = as.numeric(y)
+    dy = y - mean(y)
+    pgtotal = diag(1, nrow(x))
+    for (gel in g) {
+        dxg = as.numeric(scale(as.numeric(pgtotal %*% dx[ , gel])))
+        pg = diag(1, nrow(x)) - (outer(dxg, dxg) / sum(dxg^2))
+        pgtotal = pg %*% pgtotal
     }
-	pgdx = pgtotal %*% dx
-	pgdy = pgtotal %*% matrix(dy, nrow=length(dy))
-	compCors = as.numeric(t(scale(pgdy)) %*% scale(pgdx)) / (length(y)-1)
-	names(compCors) = colnames(x)
-	return(compCors)
+    pgdx = pgtotal %*% dx
+    pgdy = pgtotal %*% matrix(dy, nrow=length(dy))
+    compCors = as.numeric(t(scale(pgdy)) %*% scale(pgdx)) / (length(y)-1)
+    names(compCors) = colnames(x)
+    return(compCors)
 }

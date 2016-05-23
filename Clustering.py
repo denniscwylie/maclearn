@@ -31,7 +31,7 @@ def kmplot(xy):
     clust = km.predict(x)
     if sum((clust-0.5) * (y-0.5)) < 0:
         clust = 1 - clust
-    isright = sign((clust-0.5) * (y-0.5))
+    isright = numpy.sign((clust-0.5) * (y-0.5))
     plotdata['group'] = (1-isright) + y
     ax = plotdata.ix[plotdata["group"]==0].plot.scatter(
             x="g0", y="g1", color="black")

@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import copy
 import numpy
+from numpy import mean
 import pandas
 from pandas import DataFrame
 from pandas import Series

@@ -1,12 +1,12 @@
 rowSds = function(x, na.rm=FALSE) {
-	n = ncol(x)
-	return(sqrt((n/(n-1)) * (
-			rowMeans(x*x, na.rm=na.rm) - rowMeans(x, na.rm=na.rm))))
+    n = ncol(x)
+    return(sqrt((n/(n-1)) * (
+            rowMeans(x*x, na.rm=na.rm) - rowMeans(x, na.rm=na.rm))))
 }
 colSds = function(x, na.rm=FALSE) {
-	n = nrow(x)
-	return(sqrt((n/(n-1)) * (
-			colMeans(x*x, na.rm=na.rm) - colMeans(x, na.rm=na.rm))))
+    n = nrow(x)
+    return(sqrt((n/(n-1)) * (
+            colMeans(x*x, na.rm=na.rm) - colMeans(x, na.rm=na.rm))))
 }
 
 
@@ -25,7 +25,7 @@ PValueSelector = function(f=NULL, threshold=0.05, fdr="fdr",
     nFeat = nFeat
     vectorize = vectorize
     if (length(f) == 0) {
-		vectorize = FALSE
+        vectorize = FALSE
         f = function(x, y, ...) {
             yFeat = y
             if (is.factor(yFeat)) {
@@ -115,8 +115,8 @@ SolderedPipeFitter = function(...) {
         class(fit) = c("SolderedPipe", "ModelPipe")
         return(fit)
     }
-	class(learner) = c("SolderedPipeFitter", "ModelFitter",
-			"SolderedPipe", "ModelPipe", class(learner))
+    class(learner) = c("SolderedPipeFitter", "ModelFitter",
+            "SolderedPipe", "ModelPipe", class(learner))
     return(learner)
 }
 SolderedPipe = SolderedPipeFitter
@@ -161,113 +161,113 @@ predict.ModelFit = function(obj, x, ...) {obj$predict(x, ...)}
 
 
 caretize = function(fitpipe, lev=NULL, threshold=0.5, ...,
-		type=NULL, library=NULL, loop=NULL,
-		parameters=NULL, grid=NULL) {
-	lev = lev
-	threshold = threshold
-	if (length(type) == 0) {
-		type = ifelse(length(lev)==0, "Regression", "Classification")
+        type=NULL, library=NULL, loop=NULL,
+        parameters=NULL, grid=NULL) {
+    lev = lev
+    threshold = threshold
+    if (length(type) == 0) {
+        type = ifelse(length(lev)==0, "Regression", "Classification")
     }
     if (type == "Classification") {
-		caretPredict = function(modelFit, newdata, ...) {
-			ifelse(
-				predict(modelFit, newdata) < threshold,
-				lev[1],
-				lev[2]
-			)
+        caretPredict = function(modelFit, newdata, ...) {
+            ifelse(
+                predict(modelFit, newdata) < threshold,
+                lev[1],
+                lev[2]
+            )
         }
     } else {
-		caretPredict = function(modelFit, newdata, ...) {
-			predict(modelFit, newdata)
-		}
+        caretPredict = function(modelFit, newdata, ...) {
+            predict(modelFit, newdata)
+        }
     }
-	if (length(parameters) == 0) {
-		parameters = data.frame(
-			parameter = "ignored",
-			class = "numeric",
-			label = "Ignored"
-		)
+    if (length(parameters) == 0) {
+        parameters = data.frame(
+            parameter = "ignored",
+            class = "numeric",
+            label = "Ignored"
+        )
     }
-	if (length(grid) == 0) {
-		grid = function(x, y, len=NULL, ...) {data.frame(ignored=0)}
+    if (length(grid) == 0) {
+        grid = function(x, y, len=NULL, ...) {data.frame(ignored=0)}
     }
-	return(list(
-		library = library,
-		type = type,
-		loop = loop,
-		parameters = parameters,
-		grid = grid,
-		fit = fitpipe,
-		predict = caretPredict,
-		prob = function(modelFit, newdata, ...) {
-			preds = predict(modelFit, newdata)
-			out = data.frame(
-				lev1 = 1 - preds,
-				lev2 = preds
-			)
-			colnames(out) = lev
-			return(out)
-		}
-	))
+    return(list(
+        library = library,
+        type = type,
+        loop = loop,
+        parameters = parameters,
+        grid = grid,
+        fit = fitpipe,
+        predict = caretPredict,
+        prob = function(modelFit, newdata, ...) {
+            preds = predict(modelFit, newdata)
+            out = data.frame(
+                lev1 = 1 - preds,
+                lev2 = preds
+            )
+            colnames(out) = lev
+            return(out)
+        }
+    ))
 }
 
 train.ModelFitter = function(
-		fitpipe,
-		x,
-		y,
-		threshold = 0.5,
-		...,
-		method = "repeatedcv",
-		number = 10,
-		repeats = 1,
-		trControl = trainControl(method, number, repeats),
-		tuneGrid = NULL,
-		parameters = NULL,
-		grid = NULL,
-		type = NULL,
-		library = NULL,
-		loop = NULL) {
-	caretizedPipe = caretize(
-		fitpipe,
-		lev = levels(y),
-		threshold = threshold,
-		type = type,
-		library = library,
-		loop = loop,
-		parameters = parameters,
-		grid = grid
-	)
+        fitpipe,
+        x,
+        y,
+        threshold = 0.5,
+        ...,
+        method = "repeatedcv",
+        number = 10,
+        repeats = 1,
+        trControl = trainControl(method, number, repeats),
+        tuneGrid = NULL,
+        parameters = NULL,
+        grid = NULL,
+        type = NULL,
+        library = NULL,
+        loop = NULL) {
+    caretizedPipe = caretize(
+        fitpipe,
+        lev = levels(y),
+        threshold = threshold,
+        type = type,
+        library = library,
+        loop = loop,
+        parameters = parameters,
+        grid = grid
+    )
 ## browser()
-	return(train(
-		x = x,
-		y = y,
-		method = caretizedPipe,
-		trControl = trControl,
-		tuneGrid = tuneGrid,
-		...
-	))
+    return(train(
+        x = x,
+        y = y,
+        method = caretizedPipe,
+        trControl = trControl,
+        tuneGrid = tuneGrid,
+        ...
+    ))
 }
 
 ## caretTrain = function(
-## 		fitpipe,
-## 		x,
-## 		y,
-## 		threshold = 0.5,
-## 		...,
-## 		method = "repeatedcv",
-## 		number = 10,
-## 		repeats = 1,
-## 		trControl = trainControl(method, number, repeats),
-## 		tuneGrid = data.frame(ignored=0)) {
-## 	caretizedPipe = caretize(fitpipe, lev=levels(y), threshold=threshold)
-## 	return(train(
-## 		x = x,
-## 		y = y,
-## 		method = caretizedPipe,
-## 		trControl = trControl,
-## 		tuneGrid = tuneGrid,
-## 		...
-## 	))
+##         fitpipe,
+##         x,
+##         y,
+##         threshold = 0.5,
+##         ...,
+##         method = "repeatedcv",
+##         number = 10,
+##         repeats = 1,
+##         trControl = trainControl(method, number, repeats),
+##         tuneGrid = data.frame(ignored=0)) {
+##     caretizedPipe = caretize(fitpipe, lev=levels(y), threshold=threshold)
+##     return(train(
+##         x = x,
+##         y = y,
+##         method = caretizedPipe,
+##         trControl = trControl,
+##         tuneGrid = tuneGrid,
+##         ...
+##     ))
 ## }
 
 
@@ -289,81 +289,81 @@ FastTSelector = function(threshold=0.05, fdr="fdr", nFeat=NULL) {
 
 
 PearsonSelector = function(nFeat, type="abs") {
-	nFeat = nFeat
-	type = type
-	selector = function(x, y, ...) {
-		x = scale(x)
-		y = as.numeric(scale(as.numeric(y)))
-		xycors = as.vector(y %*% x) / (length(y)-1)
-		names(xycors) = colnames(x)
-		xycors = get(type)(xycors)
-		selectedFeatures = head(
-			names(sort(xycors, decreasing=TRUE)),
-			n = nFeat
-		)
-		return(list(
-			selectedFeatures = selectedFeatures,
-			transform = function(x, ...) {
-				x[ , selectedFeatures, drop=FALSE]
+    nFeat = nFeat
+    type = type
+    selector = function(x, y, ...) {
+        x = scale(x)
+        y = as.numeric(scale(as.numeric(y)))
+        xycors = as.vector(y %*% x) / (length(y)-1)
+        names(xycors) = colnames(x)
+        xycors = get(type)(xycors)
+        selectedFeatures = head(
+            names(sort(xycors, decreasing=TRUE)),
+            n = nFeat
+        )
+        return(list(
+            selectedFeatures = selectedFeatures,
+            transform = function(x, ...) {
+                x[ , selectedFeatures, drop=FALSE]
             }
-		))
+        ))
     }
-	class(selector) = c("PearsonSelector", "ModelPipe", class(selector))
-	return(selector)
+    class(selector) = c("PearsonSelector", "ModelPipe", class(selector))
+    return(selector)
 }
 
 
 
 PcaExtractor = function(k, center=c("both", "column", "row", "none"),
-		scale=c("none", "column", "row")) {
-	k = k
-	center = match.arg(center)
-	scale = match.arg(scale)
-	learner = function(x, ...) {
-		colAvStore = NA
-		colSdStore = NA
-	    if (center %in% c("row", "both")) {
-    	    x = sweep(x, 1, STATS=rowMeans(x))
-	    }
-	    if (center %in% c("column", "both")) {
-			colAvStore = colMeans(x)
-	        x = sweep(x, 2, STATS=colAvStore)
-	    }
-		if (scale == "row") {
-			x = sweep(x, 1, STATS=rowSds(x), FUN=`/`)
-	    } else if (scale == "column") {
-			colSdStore = colSds(x)
-			x = sweep(x, 2, STATS=colSdStore, FUN=`/`)
-	    }
-		xsvd = svd(x)
-	    v = xsvd$v[ , order(xsvd$d, decreasing=TRUE)]
-		v = v[ , 1:k, drop=FALSE]
-	    rownames(v) = colnames(x)
-		return(list(
-			k = k,
-			center = center,
-			scale = scale,
-			v = v,
-			colAvStore = colAvStore,
-			colSdStore = colSdStore,
-			transform = function(x, ...) {
-			    if (center %in% c("row", "both")) {
-		    	    x = sweep(x, 1, STATS=rowMeans(x))
-			    }
-			    if (center %in% c("column", "both")) {
-			        x = sweep(x, 2, STATS=colAvStore)
-			    }
-				if (scale == "row") {
-					x = sweep(x, 1, STATS=rowSds(x), FUN=`/`)
-			    } else if (scale == "column") {
-					x = sweep(x, 2, STATS=colSdStore, FUN=`/`)
-			    }
-				return(data.frame(as.matrix(x) %*% v, check.names=FALSE))
+        scale=c("none", "column", "row")) {
+    k = k
+    center = match.arg(center)
+    scale = match.arg(scale)
+    learner = function(x, ...) {
+        colAvStore = NA
+        colSdStore = NA
+        if (center %in% c("row", "both")) {
+            x = sweep(x, 1, STATS=rowMeans(x))
+        }
+        if (center %in% c("column", "both")) {
+            colAvStore = colMeans(x)
+            x = sweep(x, 2, STATS=colAvStore)
+        }
+        if (scale == "row") {
+            x = sweep(x, 1, STATS=rowSds(x), FUN=`/`)
+        } else if (scale == "column") {
+            colSdStore = colSds(x)
+            x = sweep(x, 2, STATS=colSdStore, FUN=`/`)
+        }
+        xsvd = svd(x)
+        v = xsvd$v[ , order(xsvd$d, decreasing=TRUE)]
+        v = v[ , 1:k, drop=FALSE]
+        rownames(v) = colnames(x)
+        return(list(
+            k = k,
+            center = center,
+            scale = scale,
+            v = v,
+            colAvStore = colAvStore,
+            colSdStore = colSdStore,
+            transform = function(x, ...) {
+                if (center %in% c("row", "both")) {
+                    x = sweep(x, 1, STATS=rowMeans(x))
+                }
+                if (center %in% c("column", "both")) {
+                    x = sweep(x, 2, STATS=colAvStore)
+                }
+                if (scale == "row") {
+                    x = sweep(x, 1, STATS=rowSds(x), FUN=`/`)
+                } else if (scale == "column") {
+                    x = sweep(x, 2, STATS=colSdStore, FUN=`/`)
+                }
+                return(data.frame(as.matrix(x) %*% v, check.names=FALSE))
             }
-		))
+        ))
     }
-	class(learner) = c("PcaExtractor", "ModelPipe", class(learner))
-	return(learner)
+    class(learner) = c("PcaExtractor", "ModelPipe", class(learner))
+    return(learner)
 }
 
 
@@ -381,11 +381,11 @@ logRpmTransformer = XTransformer(logRpm)
 
 logUq = function(x, ..., MARGIN=1, scale=100) {
     ## geneDetected = (apply(x, 3-MARGIN, sum) > 0)
-	geneDetected = if (MARGIN == 1) {
-		colSums(x) > 0
-	} else if (MARGIN == 2) {
-		rowSums(x) > 0
-	}
+    geneDetected = if (MARGIN == 1) {
+        colSums(x) > 0
+    } else if (MARGIN == 2) {
+        rowSums(x) > 0
+    }
     x = scale * sweep(
         x = x,
         MARGIN = MARGIN,
@@ -444,16 +444,16 @@ dldaFitter = ModelFitter(
     },
     predictionProcessor = function(discriminants) {
         exponentiatedDiscriminants = exp(sweep(
-	        x = -discriminants$scores,
-	        MARGIN = 2,
-	        STATS = apply(-discriminants$scores, 2, max),
-	        FUN = `-`
+            x = -discriminants$scores,
+            MARGIN = 2,
+            STATS = apply(-discriminants$scores, 2, max),
+            FUN = `-`
         ))
         probs = sweep(
-	        x = exponentiatedDiscriminants,
-	        MARGIN = 2,
-	        STATS = colSums(exponentiatedDiscriminants),
-	        FUN = `/`
+            x = exponentiatedDiscriminants,
+            MARGIN = 2,
+            STATS = colSums(exponentiatedDiscriminants),
+            FUN = `/`
         )
         return(probs[2, ])
     }
@@ -552,21 +552,21 @@ SvmFitter = function(...) {
 
 
 RandomForestFitter = function(...) {
-	rfArgs = list(...)
-	out = ModelFitter(
-		f = function(x, y, ...) {
-			require(randomForest)
-			do.call(randomForest, c(list(x=x, y=y), rfArgs))
+    rfArgs = list(...)
+    out = ModelFitter(
+        f = function(x, y, ...) {
+            require(randomForest)
+            do.call(randomForest, c(list(x=x, y=y), rfArgs))
         },
-		predictor = function(obj, x, ...) {
-			## x = data.frame(x)
-			predictions = predict(obj, x, type="prob")[ , 2]
-			names(predictions) = rownames(x)
-			return(predictions)
+        predictor = function(obj, x, ...) {
+            ## x = data.frame(x)
+            predictions = predict(obj, x, type="prob")[ , 2]
+            names(predictions) = rownames(x)
+            return(predictions)
         }
-	)
-	class(out) = c("RandomForestFitter", class(out))
-	return(out)
+    )
+    class(out) = c("RandomForestFitter", class(out))
+    return(out)
 }
 
 
