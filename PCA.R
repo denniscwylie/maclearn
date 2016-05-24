@@ -8,15 +8,15 @@ source("MaclearnUtilities.R")
 load("prepared_datasets.RData")
 
 
-pdf("BottomlyPCA.pdf", h=5, w=5*1.375)
+## pdf("BottomlyPCA.pdf", h=5, w=5*1.375)
 ggpca(xnorms$bottomly, ys$bottomly, cshow=25,
         rlab=FALSE, clab=TRUE)
-garbage = dev.off()
+## garbage = dev.off()
 
-pdf("PatelPCA.pdf", h=5, w=5*1.375)
+## pdf("PatelPCA.pdf", h=5, w=5*1.375)
 ggpca(xnorms$patel, ys$patel, cshow=25,
         rlab=FALSE, clab=TRUE)
-garbage = dev.off()
+## garbage = dev.off()
 
 set.seed(123456789)
 xxx = kmeans(t(xnorms$patel), centers=3)

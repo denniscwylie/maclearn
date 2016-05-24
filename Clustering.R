@@ -67,9 +67,9 @@ pheatmap(t(xsim2), annotation=heatY,
 load("prepared_datasets.RData")
 
 hcBottomly = hclust(dist(xnorms$bottomly), method="complete")
-pdf("BottomlyHClust.pdf", h=5, w=6)
+## pdf("BottomlyHClust.pdf", h=5, w=6)
 plot(hcBottomly)
-garbage = dev.off()
+## garbage = dev.off()
 
 load("bottomlyGeneSyms.RData")
 bottomlyHighVar = colnames(xnorms$bottomly)[
@@ -80,12 +80,18 @@ rownames(heatX) = ifelse(
     bottomlyGeneSyms[rownames(heatX)],
     rownames(heatX)
 )
+## remove overall gene-means from data for more useful plot
+heatX = data.frame(sweep(heatX, 1, rowMeans(heatX)), check.names=FALSE)
+## pay attention to changes around mean, not far from it
+maxLogFoldChange = 2.5
+heatX[heatX > maxLogFoldChange] = maxLogFoldChange
+heatX[heatX < -maxLogFoldChange] = -maxLogFoldChange
 heatY = data.frame(row.names=colnames(heatX), strain=ys$bottomly)
-pdf("BottomlyHighVarHeatmap.pdf", h=8, w=8*1.3, onefile=FALSE)
+## pdf("BottomlyHighVarHeatmap.pdf", h=8, w=8*1.3, onefile=FALSE)
 pheatmap(
     heatX,
     annotation_col = heatY,
     annotation_colors = list(
     strain = c('C57BL/6J'='black', 'DBA/2J'=rgb(1, 0, 0.4)))
 )
-garbage = dev.off()
+## garbage = dev.off()
