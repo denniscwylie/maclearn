@@ -118,9 +118,9 @@ ggobj = ggobj + theme_classic()
 ggobj = ggobj + scale_color_manual(
         values=c("darkgray", "black", "red", "dodgerblue3"))
 ggobj = ggobj + ylab("Accuracy (5-fold CV)")
-pdf("KnnRealAccuracyByNFeat.pdf", h=5, w=5*1.325)
+## pdf("KnnRealAccuracyByNFeat.pdf", h=5, w=5*1.325)
 print(ggobj)
-garbage = dev.off()
+## garbage = dev.off()
 
 
 ## -----------------------------------------------------------------
@@ -213,6 +213,6 @@ ggobj = ggobj + theme_classic()
 ggobj = ggobj + scale_color_manual(
         values=c("darkgray", "black", "red", "dodgerblue3"))
 ggobj = ggobj + ylab("Accuracy (5-fold CV)")
-pdf("KnnRealAccuracyByNPcs.pdf", h=5, w=5*1.325)
+## pdf("KnnRealAccuracyByNPcs.pdf", h=5, w=5*1.325)
 print(ggobj)
-garbage = dev.off()
+## garbage = dev.off()

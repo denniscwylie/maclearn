@@ -78,27 +78,11 @@ boxstrip(
     colscale = c("black", "red")
 )
 
-ggpairsXY(
-    xnorms$bottomly[ rownames(tTestResults$bottomly)[1:3] ],
-    ys$bottomly,
-    colscale = c("black", "red"),
-    yname = "strain"
-)
-
-
 boxstrip(
     xnorms$patel[ rownames(tTestResults$patel)[1:9] ],
     ys$patel,
     colscale = c("black", "red")
 )
-
-ggpairsXY(
-    xnorms$patel[ rownames(tTestResults$patel)[1:3] ],
-    ys$patel,
-    colscale = c("black", "red"),
-    yname = "SubType"
-)
-
 
 boxstrip(
     xnorms$montastier[ rownames(tTestResults$montastier)[1:9] ],
@@ -106,30 +90,15 @@ boxstrip(
     colscale = c("black", "red")
 )
 
-ggpairsXY(
-    xnorms$montastier[ rownames(tTestResults$montastier)[1:3] ],
-    ys$montastier,
-    colscale = c("black", "red"),
-    yname = "Time"
-)
-
-
 boxstrip(
     xnorms$hess[ rownames(tTestResults$hess)[1:9] ],
     ys$hess,
     colscale = c("black", "red")
 )
 
-ggpairsXY(
-    xnorms$hess[ rownames(tTestResults$hess)[1:3] ],
-    ys$hess,
-    colscale = c("black", "red"),
-    yname = "pCR"
-)
-
 
 ## -----------------------------------------------------------------
-## generate fancy p.value vs pearson correlation plot-
+## generate fancy p.value vs pearson correlation plot
 ## -----------------------------------------------------------------
 ggdata = do.call(
     rbind,
@@ -153,9 +122,9 @@ ggobj = ggobj + geom_line()
 ggobj = ggobj + scale_color_manual(
         values=c("darkred", "red", "darkgray", "black"))
 ggobj = ggobj + theme_bw()
-pdf("TStatVsPearson.pdf", h=5, w=5*1.45)
+## pdf("TStatVsPearson.pdf", h=5, w=5*1.45)
 print(ggobj)
-garbage = dev.off()
+## garbage = dev.off()
 
 
 ## -----------------------------------------------------------------

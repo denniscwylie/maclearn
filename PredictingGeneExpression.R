@@ -126,7 +126,7 @@ lambdaMins1 = sapply(brca1CV1, FUN=function(z) {
     z$finalModel[[2]]$fit$lambda.min
 })
 summary(lm(lambdaMins1 ~ log(nFeats)))
-## approx -0.0157 + 0.0235 * log(nFeats)
+## approx -0.03 + 0.03 * log(nFeats)
 
 ggdata = rbind(ggdata, data.frame(
     "Number Potential Features" = nFeats,

@@ -97,7 +97,7 @@ for s in tTestResults:
 
 compResults = gramSchmidtSelect(x = xnorms['patel'],
                                 y = ynums['patel'],
-                                g = ['NAMPT', 'SEC61G'])
+                                g = 'NAMPT')
 compResults = compResults.ix[
         compResults.abs().sort_values(ascending=False).index]
 
