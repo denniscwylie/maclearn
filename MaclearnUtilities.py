@@ -15,7 +15,7 @@ def safeFactorize(series):
         uniqSer = series.unique()
         out = pandas.Series(numpy.zeros(len(series)))
         out.index = series.index
-        for i in xrange(1, len(uniqSer)):
+        for i in range(1, len(uniqSer)):
             out.ix[series == uniqSer[i]] = i
         return out
 

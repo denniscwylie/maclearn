@@ -79,9 +79,9 @@ def knnSimulate(param, nFold=5):
 
 
 repeatedKnnResults = []
-for r in xrange(5):
+for r in range(5):
     repeatedKnnResults.extend(knnSimulate(parGrid.ix[i])
-                              for i in xrange(parGrid.shape[0]))
+                              for i in range(parGrid.shape[0]))
 knnResultsSimplified = DataFrame([(x['p'],
                                    x['k'],
                                    x['cvAccuracy'],
@@ -115,4 +115,4 @@ ggobj += ggplot.theme_bw()
 ggobj += ggplot.geom_point(alpha=0.6)
 ggobj += ggplot.stat_smooth()
 ggobj += ggplot.facet_wrap('k') 
-print ggobj
+print(ggobj)

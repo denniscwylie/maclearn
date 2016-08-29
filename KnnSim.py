@@ -79,13 +79,13 @@ def knnSimulate(param):
 
 
 knnResults = [knnSimulate(parGrid.ix[i])
-              for i in xrange(parGrid.shape[0])]
+              for i in range(parGrid.shape[0])]
 
 
 repeatedKnnResults = []
-for r in xrange(10):
+for r in range(10):
     repeatedKnnResults.extend(knnSimulate(parGrid.ix[i])
-                              for i in xrange(parGrid.shape[0]))
+                              for i in range(parGrid.shape[0]))
 knnResultsSimplified = DataFrame([(x['p'],
                                    x['k'],
                                    x['resubAccuracy'],
@@ -144,4 +144,4 @@ for k in ggdata['k'].unique():
 # ggobj += ggplot.geom_point(alpha=0.6)
 # ggobj += ggplot.stat_smooth()
 # ggobj += ggplot.facet_wrap('k') 
-# print ggobj
+# print(ggobj)
