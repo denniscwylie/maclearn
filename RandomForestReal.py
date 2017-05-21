@@ -6,9 +6,9 @@ from pandas import DataFrame, Series
 import sklearn as sk
 import sklearn.cross_validation as cross_validation
 from sklearn.cross_validation import ShuffleSplit
+import sklearn.ensemble as ensemble
 import sklearn.feature_selection as feature_selection
 import sklearn.pipeline as pipeline
-import sklearn.svm as svm
 
 import MaclearnUtilities
 
@@ -51,18 +51,29 @@ def fitModelWithNFeat(fitter, n, setname, cv=None):
                                       cv = cv))
 
 
-svmLinAccs = {
+from sklearn.ensemble import RandomForestClassifier
+
+fsRf100Accs = {
     s : fitModelWithNFeat(
-        fitter = svm.SVC(kernel="linear", C=1),
+        fitter = RandomForestClassifier(n_estimators=100),
         n = 10,
         setname = s
     )
     for s in xnorms
 }
 
-svmRadAccs = {
+fsRf500Accs = {
     s : fitModelWithNFeat(
-        fitter = svm.SVC(kernel="rbf", C=1), # use default gamma
+        fitter = RandomForestClassifier(n_estimators=500),
+        n = 10,
+        setname = s
+    )
+    for s in xnorms
+}
+
+fsRf2500Accs = {
+    s : fitModelWithNFeat(
+        fitter = RandomForestClassifier(n_estimators=2500),
         n = 10,
         setname = s
     )

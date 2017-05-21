@@ -1,13 +1,15 @@
-import collections
+from collections import OrderedDict
 # import ggplot
 import itertools
 import matplotlib.pyplot as plt
-import numpy
-import pandas
+import numpy as np
+import pandas as pd
 from pandas import DataFrame
 from pandas import Series
-import sklearn
+import sklearn as sk
 from sklearn.neighbors import KNeighborsClassifier
+
+plt.ion()
 
 import SimData
 
@@ -16,23 +18,23 @@ x2_train = SimData.simulate2Group(n = 100,
                                   p = 2,
                                   effect = [1.25] * 2)
 knnFit = KNeighborsClassifier(n_neighbors=3)
-knnFit.fit(array(x2_train['x']), array(x2_train['y']))
+knnFit.fit(np.array(x2_train['x']), np.array(x2_train['y']))
 knnResub = Series(knnFit.predict(x2_train['x']),
                   index = x2_train['y'].index)
-sum(diag(pandas.crosstab(knnResub, x2_train['y'])))
+sum(np.diag(pd.crosstab(knnResub, x2_train['y'])))
 x2_test = SimData.simulate2Group(n = 100,
                                  p = 2,
                                  effect = [1.25] * 2)
 knnTest = Series(knnFit.predict(x2_test['x']),
                  index = x2_test['y'].index)
-sum(diag(pandas.crosstab(knnTest, x2_test['y'])))
+sum(np.diag(pd.crosstab(knnTest, x2_test['y'])))
 
 
 def expandGrid(od):
     cartProd = list(itertools.product(*od.values()))
     return DataFrame(cartProd, columns=od.keys())
 
-parVals = collections.OrderedDict()
+parVals = OrderedDict()
 parVals['n'] = [100]
 parVals['p'] = [2, 5, 10, 25, 100, 500]
 parVals['k'] = [3, 5, 10, 25]
@@ -48,33 +50,33 @@ def knnSimulate(param):
         effect = [param['effect']] * int(param['p'])
     )
     knnFit = KNeighborsClassifier(n_neighbors=int(param['k']))
-    knnFit.fit(array(trainSet['x']), array(trainSet['y']))
+    knnFit.fit(np.array(trainSet['x']), np.array(trainSet['y']))
     testSet = SimData.simulate2Group(
         n = int(param['n']),
         p = int(param['p']),
         effect = [param['effect']] * int(param['p'])
     )
-    out = collections.OrderedDict()
-    out['p'] = param['p']
-    out['k'] = param['k']
+    out = OrderedDict()
+    out['p'] = int(param['p'])
+    out['k'] = int(param['k'])
     out['train'] = trainSet
     out['test'] = testSet
     out['resubPreds'] = knnFit.predict(trainSet['x'])
     out['resubProbs'] = knnFit.predict_proba(trainSet['x'])
     out['testPreds'] = knnFit.predict(testSet['x'])
     out['testProbs'] = knnFit.predict_proba(testSet['x'])
-    out['resubTable'] = pandas.crosstab(
+    out['resubTable'] = pd.crosstab(
         Series(out['resubPreds'], index=trainSet['y'].index),
         trainSet['y']
     )
-    out['resubAccuracy'] = (sum(diag(out['resubTable'])) /
-                            (1.0 * sum(sum(out['resubTable']))))
-    out['testTable'] = pandas.crosstab(
+    out['resubAccuracy'] = (np.sum(np.diag(out['resubTable'])) /
+                            (1.0 * np.sum(np.sum(out['resubTable']))))
+    out['testTable'] = pd.crosstab(
         Series(out['testPreds'], index=testSet['y'].index),
         testSet['y']
     )
-    out['testAccuracy'] = (sum(diag(out['testTable'])) /
-                           (1.0 * sum(sum(out['testTable']))))
+    out['testAccuracy'] = (np.sum(np.diag(out['testTable'])) /
+                           (1.0 * np.sum(np.sum(out['testTable']))))
     return out
 
 
@@ -86,6 +88,7 @@ repeatedKnnResults = []
 for r in range(10):
     repeatedKnnResults.extend(knnSimulate(parGrid.ix[i])
                               for i in range(parGrid.shape[0]))
+
 knnResultsSimplified = DataFrame([(x['p'],
                                    x['k'],
                                    x['resubAccuracy'],
@@ -96,13 +99,12 @@ knnResultsSimplified = DataFrame([(x['p'],
                                             'resubAccuracy',
                                             'testAccuracy'])
 
-
-ggdata = pandas.concat(
-    [DataFrame({'log10(p)' : log10(knnResultsSimplified.p),
+ggdata = pd.concat(
+    [DataFrame({'log10(p)' : np.log10(knnResultsSimplified.p),
                 'k' : knnResultsSimplified.k.apply(int),
                 'type' : 'resub',
                 'Accuracy' : knnResultsSimplified.resubAccuracy}),
-     DataFrame({'log10(p)' : log10(knnResultsSimplified.p),
+     DataFrame({'log10(p)' : np.log10(knnResultsSimplified.p),
                 'k' : knnResultsSimplified.k.apply(int),
                 'type' : 'test',
                 'Accuracy' : knnResultsSimplified.testAccuracy})],
@@ -132,7 +134,7 @@ for k in ggdata['k'].unique():
     if plotIndex in [2, 4]:
         plt.ylabel("")
     plotIndex += 1
-    
+
 
 # ggobj = ggplot.ggplot(
 #     data = ggdata,

@@ -1,5 +1,6 @@
-import numpy
-import pandas
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from pandas import DataFrame
 from pandas import Series
 import scipy
@@ -9,6 +10,7 @@ import sklearn.cluster
 
 import SimData
 
+plt.ion()
 plt.style.use("fivethirtyeight")
 
 simDat = SimData.simulate2Group(n=40, p=2, effect=[1, 0.75])
@@ -31,12 +33,12 @@ def kmplot(xy):
     clust = km.predict(x)
     if sum((clust-0.5) * (y-0.5)) < 0:
         clust = 1 - clust
-    isright = numpy.sign((clust-0.5) * (y-0.5))
+    isright = np.sign((clust-0.5) * (y-0.5))
     plotdata['group'] = (1-isright) + y
     ax = plotdata.ix[plotdata["group"]==0].plot.scatter(
             x="g0", y="g1", color="black")
     plotdata.ix[plotdata["group"]==1].plot.scatter(
-            x="g0", y="g1", color="gold", ax=ax)
+            x="g0", y="g1", color="goldenrod", ax=ax)
     if len(plotdata["group"].unique()) > 2:
         plotdata.ix[plotdata["group"]==2].plot.scatter(
                 x="g0", y="g1", color="lightgray", ax=ax)

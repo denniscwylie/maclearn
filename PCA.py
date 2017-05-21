@@ -1,20 +1,12 @@
-from collections import OrderedDict
 import matplotlib.pyplot as plt
-import numpy
-import pandas
+import numpy as np
+import pandas as pd
 from pandas import DataFrame
-from pandas import Series
-import sklearn
-import sklearn.cross_validation
-from sklearn.cross_validation import ShuffleSplit
-import sklearn.feature_selection
-import sklearn.neighbors
-import sklearn.pipeline
 
-import pcaextractor
 import MaclearnUtilities
 from MaclearnUtilities import safeFactorize
 
+plt.ion()
 plt.style.use("fivethirtyeight")
 
 import RestrictedData
@@ -41,7 +33,7 @@ def svdForPca(x, center="both", scale="none"):
     elif scale == 'col':
         colSds = xhere.std(axis=0)
         xhere = xhere.divide(colSds, axis=1)
-    xsvd = numpy.linalg.svd(xhere, full_matrices=False)
+    xsvd = np.linalg.svd(xhere, full_matrices=False)
     return xsvd
 
 
@@ -62,7 +54,7 @@ def pca(x, y=None, ylev=None,
     svdRowPlot = svdRowPlot.divide(svdRowPlot.max(axis=0) -
                                    svdRowPlot.min(axis=0), axis=1)
     svdColPlot = DataFrame(
-        numpy.transpose(xsvd[2][0:2, :]),
+        np.transpose(xsvd[2][0:2, :]),
         index = xForSvd.columns,
         columns = ["PC1", "PC2"]
     )

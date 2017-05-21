@@ -1,20 +1,21 @@
 from collections import OrderedDict
-import numpy
-from numpy import mean
-import pandas
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from pandas import DataFrame
 from pandas import Series
-import sklearn
-import sklearn.cross_validation
+import sklearn as sk
+import sklearn.cross_validation as cross_validation
 from sklearn.cross_validation import ShuffleSplit
-import sklearn.feature_selection
-import sklearn.neighbors
-import sklearn.pipeline
+import sklearn.feature_selection as feature_selection
+import sklearn.neighbors as neighbors
+import sklearn.pipeline as pipeline
 
 import pcaextractor
 import MaclearnUtilities
 from MaclearnUtilities import safeFactorize
 
+plt.ion()
 plt.style.use("fivethirtyeight")
 
 import RestrictedData
@@ -27,12 +28,12 @@ ynums = RestrictedData.ynums
 
 def pandaize(f):
     def pandaized(estimator, X, y, **kwargs):
-        return f(estimator, array(X), safeFactorize(y), **kwargs)
+        return f(estimator, np.array(X), safeFactorize(y), **kwargs)
     return pandaized
 
 @pandaize
 def cross_val_score_pd(estimator, X, y, **kwargs):
-    return sklearn.cross_validation.cross_val_score(
+    return cross_validation.cross_val_score(
             estimator, X, y, **kwargs)
 
 
@@ -43,13 +44,13 @@ ys = {
     'hess' : annots['hess'].pCRtxt
 }
 
-knnClass = sklearn.neighbors.KNeighborsClassifier(n_neighbors=3)
+knnClass = neighbors.KNeighborsClassifier(n_neighbors=3)
 cvSchedules = {k : ShuffleSplit(len(ys[k]),
                                 n_iter = 5,
                                 test_size = 0.2,
                                 random_state = 123)
                for k in xnorms}
-knnCvAccs = {k : mean(cross_val_score_pd(estimator = knnClass,
+knnCvAccs = {k : np.mean(cross_val_score_pd(estimator = knnClass,
                                          X = xnorms[k],
                                          y = ys[k],
                                          cv = cvSchedules[k]))
@@ -59,14 +60,14 @@ knnCvAccs = {k : mean(cross_val_score_pd(estimator = knnClass,
 ## -----------------------------------------------------------------
 ## try with univariate filter feature selection
 ## -----------------------------------------------------------------
-fsKnnFitter = sklearn.pipeline.Pipeline([
-    ('featsel', sklearn.feature_selection.SelectKBest(
-            sklearn.feature_selection.f_regression, k=10)),
-    ('classifier', sklearn.neighbors.KNeighborsClassifier(
+fsKnnFitter = pipeline.Pipeline([
+    ('featsel', feature_selection.SelectKBest(
+            feature_selection.f_regression, k=10)),
+    ('classifier', neighbors.KNeighborsClassifier(
             n_neighbors=3))
 ])
 
-fsKnnCvAccs = {k : mean(cross_val_score_pd(estimator = fsKnnFitter,
+fsKnnCvAccs = {k : np.mean(cross_val_score_pd(estimator = fsKnnFitter,
                                            X = xnorms[k],
                                            y = ys[k],
                                            cv = cvSchedules[k]))
@@ -83,13 +84,13 @@ def fitKnnWithNFeat(n, setname, cv=None):
         cv = cvSchedules[setname]
     if n > xnorms[setname].shape[1]:
         return None
-    fsKnnFitter = sklearn.pipeline.Pipeline([
-        ('featsel', sklearn.feature_selection.SelectKBest(
-                sklearn.feature_selection.f_regression, k=n)),
-        ('classifier', sklearn.neighbors.KNeighborsClassifier(
+    fsKnnFitter = pipeline.Pipeline([
+        ('featsel', feature_selection.SelectKBest(
+                feature_selection.f_regression, k=n)),
+        ('classifier', neighbors.KNeighborsClassifier(
                 n_neighbors=3))
     ])
-    return mean(cross_val_score_pd(estimator = fsKnnFitter,
+    return np.mean(cross_val_score_pd(estimator = fsKnnFitter,
                                    X = xnorms[setname],
                                    y = ys[setname],
                                    cv = cv))
@@ -98,13 +99,13 @@ accsByNFeats = OrderedDict([(s, OrderedDict([(n, fitKnnWithNFeat(n, s))
                                              for n in nFeatures]))
                             for s in xnorms])
 
-plotData = pandas.concat([DataFrame({"set" : s,
-                                     "p" : p,
-                                     "acc" : accsByNFeats[s][p]},
-                                    index = [s + "_" + str(p)])
-                          for s in accsByNFeats
-                          for p in accsByNFeats[s]],
-                         axis = 0)
+plotData = pd.concat([DataFrame({"set" : s,
+                                 "p" : p,
+                                 "acc" : accsByNFeats[s][p]},
+                                index = [s + "_" + str(p)])
+                      for s in accsByNFeats
+                      for p in accsByNFeats[s]],
+                     axis = 0)
 plt.clf()
 ax = plt.subplot(111)
 for s in plotData['set'].unique():
@@ -123,17 +124,17 @@ for s in plotData['set'].unique():
 ## -----------------------------------------------------------------
 ## use PCA feature extraction
 ## -----------------------------------------------------------------
-feKnnFitter = sklearn.pipeline.Pipeline([
+feKnnFitter = pipeline.Pipeline([
     ('featextr', pcaextractor.PcaExtractor(k=3)),
-    ('classifier', sklearn.neighbors.KNeighborsClassifier(
+    ('classifier', neighbors.KNeighborsClassifier(
             n_neighbors=3))
 ])
 
-xmod = feKnnFitter.fit(array(xnorms['patel']), array(ys['patel']))
+xmod = feKnnFitter.fit(np.array(xnorms['patel']), np.array(ys['patel']))
 xcv = cross_val_score_pd(feKnnFitter, xnorms['patel'], ys['patel'],
                          cv=cvSchedules['patel'])
 
-feKnnCvAccs = {k : mean(cross_val_score_pd(estimator = feKnnFitter,
+feKnnCvAccs = {k : np.mean(cross_val_score_pd(estimator = feKnnFitter,
                                            X = xnorms[k],
                                            y = ys[k],
                                            cv = cvSchedules[k]))
@@ -149,26 +150,27 @@ def fitKnnWithNPcs(n, setname, cv=None):
         cv = cvSchedules[setname]
     if n > min(xnorms[setname].shape):
         return None
-    feKnnFitter = sklearn.pipeline.Pipeline([
+    feKnnFitter = pipeline.Pipeline([
         ('featextr', pcaextractor.PcaExtractor(k=n)),
-        ('classifier', sklearn.neighbors.KNeighborsClassifier(
+        ('classifier', neighbors.KNeighborsClassifier(
                 n_neighbors=3))
     ])
-    return mean(cross_val_score_pd(estimator = feKnnFitter,
+    return np.mean(cross_val_score_pd(estimator = feKnnFitter,
                                    X = xnorms[setname],
                                    y = ys[setname],
                                    cv = cv))
+
 accsByNPcs = OrderedDict([(s, OrderedDict([(n, fitKnnWithNPcs(n, s))
                                            for n in npcs]))
                             for s in xnorms])
 
-plotData = pandas.concat([DataFrame({"set" : s,
-                                     "p" : p,
-                                     "acc" : accsByNPcs[s][p]},
-                                    index = [s + "_" + str(p)])
-                          for s in accsByNPcs
-                          for p in accsByNPcs[s]],
-                         axis = 0)
+plotData = pd.concat([DataFrame({"set" : s,
+                                 "p" : p,
+                                 "acc" : accsByNPcs[s][p]},
+                                index = [s + "_" + str(p)])
+                      for s in accsByNPcs
+                      for p in accsByNPcs[s]],
+                     axis = 0)
 plt.clf()
 ax = plt.subplot(111)
 for s in plotData['set'].unique():

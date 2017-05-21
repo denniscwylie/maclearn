@@ -1,21 +1,17 @@
 from collections import OrderedDict
 import copy
-import numpy
-from numpy import mean
-import pandas
-from pandas import DataFrame
-from pandas import Series
-import scipy
-import sklearn
-import sklearn.cross_validation
+import numpy as np
+import pandas as pd
+from pandas import DataFrame, Series
+import sklearn as sk
+import sklearn.cross_validation as cross_validation
 from sklearn.cross_validation import ShuffleSplit
-import sklearn.ensemble
-import sklearn.feature_selection
-import sklearn.pipeline
+import sklearn.ensemble as ensemble
+import sklearn.feature_selection as feature_selection
+import sklearn.pipeline as pipeline
 
 import MaclearnUtilities
-from MaclearnUtilities import bhfdr
-from MaclearnUtilities import colcor
+from MaclearnUtilities import bhfdr, colcor
 
 import RestrictedData
 xs = RestrictedData.xs
@@ -33,28 +29,27 @@ cvSchedules = {k : ShuffleSplit(len(ys[k]),
 
 def pandaize(f):
     def pandaized(estimator, X, y, **kwargs):
-        return f(estimator, array(X), y, **kwargs)
+        return f(estimator, np.array(X), y, **kwargs)
     return pandaized
 
 @pandaize
 def cross_val_score_pd(estimator, X, y, **kwargs):
-    return sklearn.cross_validation.cross_val_score(
-            estimator, X, y, **kwargs)
+    return cross_validation.cross_val_score(estimator, X, y, **kwargs)
 
 def fitModelWithNFeat(fitter, n, setname, cv=None):
     if cv is None:
         cv = cvSchedules[setname]
     if n > xnorms[setname].shape[1]:
         return None
-    fsFitter = sklearn.pipeline.Pipeline([
-        ('featsel', sklearn.feature_selection.SelectKBest(
-                sklearn.feature_selection.f_regression, k=n)),
+    fsFitter = pipeline.Pipeline([
+        ('featsel', feature_selection.SelectKBest(
+                feature_selection.f_regression, k=n)),
         ('classifier', fitter)
     ])
-    return mean(cross_val_score_pd(estimator = fsFitter,
-                                   X = xnorms[setname],
-                                   y = ynums[setname],
-                                   cv = cv))
+    return np.mean(cross_val_score_pd(estimator = fsFitter,
+                                      X = xnorms[setname],
+                                      y = ynums[setname],
+                                      cv = cv))
 
 
 from sklearn.ensemble import AdaBoostClassifier

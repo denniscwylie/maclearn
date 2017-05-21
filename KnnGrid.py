@@ -1,14 +1,14 @@
 from collections import OrderedDict
-import numpy
-import pandas
+import numpy as np
+import pandas as pd
 from pandas import DataFrame
 from pandas import Series
-import sklearn
-import sklearn.cross_validation
+import sklearn as sk
+import sklearn.cross_validation as cross_validation
 from sklearn.cross_validation import ShuffleSplit
-import sklearn.feature_selection
-import sklearn.neighbors
-import sklearn.pipeline
+import sklearn.feature_selection as feature_selection
+import sklearn.neighbors as neighbors
+import sklearn.pipeline as pipeline
 
 import pcaextractor
 import MaclearnUtilities
@@ -28,20 +28,20 @@ ynums = RestrictedData.ynums
 
 def pandaize(f):
     def pandaized(estimator, X, y, **kwargs):
-        return f(estimator, array(X), safeFactorize(y), **kwargs)
+        return f(estimator, np.array(X), safeFactorize(y), **kwargs)
     return pandaized
 
 @pandaize
 def cross_val_score_pd(estimator, X, y, **kwargs):
-    return sklearn.cross_validation.cross_val_score(
+    return cross_validation.cross_val_score(
             estimator, X, y, **kwargs)
 
 
 def fsKnnFitterGenerator(k):
-    return sklearn.pipeline.Pipeline([
-        ('featsel', sklearn.feature_selection.SelectKBest(
-                sklearn.feature_selection.f_regression, k=10)),
-        ('classifier', sklearn.neighbors.KNeighborsClassifier(
+    return pipeline.Pipeline([
+        ('featsel', feature_selection.SelectKBest(
+                feature_selection.f_regression, k=10)),
+        ('classifier', neighbors.KNeighborsClassifier(
                 n_neighbors=k))
     ])
 
@@ -54,7 +54,7 @@ cvSchedules = {k : ShuffleSplit(len(ys[k]),
 ks = [3, 5, 9, 15]
 knnModels = [
     OrderedDict([
-        (s, mean(cross_val_score_pd(
+        (s, np.mean(cross_val_score_pd(
             estimator = fsKnnFitterGenerator(k),
             X = xnorms[s],
             y = ys[s],

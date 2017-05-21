@@ -1,6 +1,6 @@
-import numpy
-import pandas
-import sklearn
+import numpy as np
+import pandas as pd
+import sklearn as sk
 from sklearn.base import BaseEstimator, TransformerMixin
 
 class PcaExtractor(BaseEstimator, TransformerMixin):
@@ -13,7 +13,7 @@ class PcaExtractor(BaseEstimator, TransformerMixin):
         self.small = small
 
     def fit(self, X, y=None):
-        xhere = pandas.DataFrame(X.copy())
+        xhere = pd.DataFrame(X.copy())
         if self.center in ['row', 'both']:
             xRowAvs = xhere.mean(axis=1)
             xhere = xhere.add(-xRowAvs, axis=0)
@@ -22,20 +22,20 @@ class PcaExtractor(BaseEstimator, TransformerMixin):
             xhere = xhere.add(-self.colAvs_, axis=1)
         colSds = xhere.std(axis=0)
         xhere.ix[:, colSds==0] += (self.small *
-                                   numpy.random.randn(xhere.shape[0],
-                                                      sum(colSds==0)))
+                                   np.random.randn(xhere.shape[0],
+                                                   sum(colSds==0)))
         if self.scale == 'row':
             rowSds = xhere.std(axis=1)
             xhere = xhere.divide(rowSds, axis=0)
         elif self.scale == 'col':
             self.colSds_ = xhere.std(axis=0)
             xhere = xhere.divide(self.colSds_, axis=1)
-        xsvd = numpy.linalg.svd(xhere, full_matrices=False)
-        self.v_ = numpy.transpose(xsvd[2])[:, 0:self.k]
+        xsvd = np.linalg.svd(xhere, full_matrices=False)
+        self.v_ = np.transpose(xsvd[2])[:, 0:self.k]
         return self
 
     def transform(self, X):
-        xhere = pandas.DataFrame(X.copy())
+        xhere = pd.DataFrame(X.copy())
         if self.center in ['row', 'both']:
             xRowAvs = xhere.mean(axis=1)
             xhere = xhere.add(-xRowAvs, axis=0)
@@ -46,4 +46,4 @@ class PcaExtractor(BaseEstimator, TransformerMixin):
             xhere = xhere.divide(rowSds, axis=0)
         elif self.scale == 'col':
             xhere = xhere.divide(self.colSds_, axis=1)
-        return numpy.dot(xhere, self.v_)
+        return np.dot(xhere, self.v_)
