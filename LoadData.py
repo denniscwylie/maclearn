@@ -3,8 +3,9 @@ from pandas import DataFrame
 from pandas import Series
 
 def readTab(file):
-    return pd.read_csv(file, sep="\t",
-                       header=0, index_col=0)
+    out = pd.read_csv(file, sep="\t", header=0, index_col=0)
+    out.index.name = None
+    return out
 
 xFiles = {
     "bottomly" : "rnaseq/bottomly/bottomly_count_table.tsv.gz",
