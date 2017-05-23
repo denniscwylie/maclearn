@@ -5,6 +5,7 @@ from pandas import DataFrame
 from pandas import Series
 import scipy
 import scipy.cluster
+import seaborn as sns
 import sklearn
 import sklearn.cluster
 
@@ -72,3 +73,40 @@ ghcSim = scipy.cluster.hierarchy.average(gdist)
 gdendrout = scipy.cluster.hierarchy.dendrogram(ghcSim,
                                                orientation = "right")
 
+
+## -----------------------------------------------------------------
+## clustered heatmap
+## -----------------------------------------------------------------
+heatColors = pd.Series(['#000000']*xsim2.shape[0], index=xsim2.index)
+heatColors.ix[ysim2 == 1] = '#FF0066'
+plt.clf()
+sns.clustermap(xsim2.transpose(), method='complete', col_colors=heatColors)
+
+
+## -----------------------------------------------------------------
+## on real data...
+## -----------------------------------------------------------------
+import RestrictedData
+xs = RestrictedData.xs
+xnorms = RestrictedData.xnorms
+annots = RestrictedData.annots
+ys = RestrictedData.ys
+ynums = RestrictedData.ynums
+
+bottomlyHighVar = xnorms['bottomly'].columns[xnorms['bottomly'].std() > 1.25]
+heatX = xnorms['bottomly'][bottomlyHighVar].transpose()
+## remove overall gene-means from data for more useful plot
+heatX = heatX.subtract(heatX.mean(axis=1), axis=0)
+## pay attention to changes around mean, not far from it
+maxLogFoldChange = 2.5
+heatX[heatX > maxLogFoldChange] = maxLogFoldChange
+heatX[heatX < -maxLogFoldChange] = -maxLogFoldChange
+
+heatColors = pd.Series(['#000000']*heatX.shape[1], index=heatX.columns)
+heatColors.ix[ys['bottomly'] == 'DBA/2J'] = '#FF0066'
+heatColors = pd.DataFrame({'Mouse Strain' : heatColors})
+
+plt.close()
+cm = sns.clustermap(heatX, method='complete', col_colors=heatColors, figsize=(10, 10))
+garbage = plt.setp(cm.ax_heatmap.yaxis.get_majorticklabels(), rotation=0)
+garbage = plt.setp(cm.ax_heatmap.xaxis.get_majorticklabels(), rotation=90)
