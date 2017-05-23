@@ -79,7 +79,7 @@ gdendrout = scipy.cluster.hierarchy.dendrogram(ghcSim,
 ## -----------------------------------------------------------------
 heatColors = pd.Series(['#000000']*xsim2.shape[0], index=xsim2.index)
 heatColors.ix[ysim2 == 1] = '#FF0066'
-plt.clf()
+plt.close()
 sns.clustermap(xsim2.transpose(), method='complete', col_colors=heatColors)
 
 

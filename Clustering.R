@@ -58,7 +58,7 @@ plot(ghcSim)
 ## -----------------------------------------------------------------
 heatY = data.frame(row.names=rownames(xsim2), group=ysim2)
 pheatmap(t(xsim2), annotation=heatY,
-        annotation_colors=list(group=c(A=rgb(1, 0, 0.4), B='black')))
+        annotation_colors=list(group=c(A='black', B=rgb(1, 0, 0.4))))
 
 
 ## -----------------------------------------------------------------
