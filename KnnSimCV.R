@@ -26,7 +26,7 @@ parGrid = expand.grid(
     p = c(2, 5, 10, 25, 100, 500),
     k = c(3, 5, 10, 25)
 )
-parGrid$effect = rep(2.5 / parGrid$p)
+parGrid$effect = rep(2.5 / sqrt(parGrid$p))
 rownames(parGrid) = paste0("p", parGrid$p, "_k", parGrid$k)
 
 knnSimulate = function(param, nFold=5) {

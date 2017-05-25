@@ -40,7 +40,7 @@ parVals['p'] = [2, 5, 10, 25, 100, 500]
 parVals['k'] = [3, 5, 10, 25]
 parGrid = expandGrid(parVals)
 parGrid['effect'] = 2.5
-parGrid['effect'] = parGrid['effect'] / parGrid['p']
+parGrid['effect'] = parGrid['effect'] / np.sqrt(parGrid['p'])
 
 
 def knnSimulate(param):
