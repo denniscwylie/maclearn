@@ -6,7 +6,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 class PcaExtractor(BaseEstimator, TransformerMixin):
     """Transforms data set into first k principal components."""
 
-    def __init__(self, k=2, center="both", scale="none", small=1e-10):
+    def __init__(self, k=2, center="col", scale="none", small=1e-10):
         self.k = k
         self.center = center
         self.scale = scale
@@ -21,9 +21,9 @@ class PcaExtractor(BaseEstimator, TransformerMixin):
             self.colAvs_ = xhere.mean(axis=0)
             xhere = xhere.add(-self.colAvs_, axis=1)
         colSds = xhere.std(axis=0)
-        xhere.ix[:, colSds==0] += (self.small *
-                                   np.random.randn(xhere.shape[0],
-                                                   sum(colSds==0)))
+        xhere.loc[:, colSds==0] += (self.small *
+                                    np.random.randn(xhere.shape[0],
+                                                    sum(colSds==0)))
         if self.scale == 'row':
             rowSds = xhere.std(axis=1)
             xhere = xhere.divide(rowSds, axis=0)

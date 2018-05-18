@@ -9,7 +9,7 @@ load("prepared_datasets.RData")
 
 
 fitModelWithNFeat = function(fitter, n, setname,
-        fold=5, seed=123) {
+        fold=5, seed=123) {cat(class(fitter), '\n')
     if (n > ncol(xnorms[[setname]])) {
         return(NA)
     }
@@ -56,11 +56,11 @@ modelFits10 = lapply(X=xnames, FUN=function(setname) {
 })
 modelFits10Accs = sapply(
     X = modelFits10,
-    FUN = function(u) {sapply(u, function(v) {v$acc})}
+    FUN = function(u) {sapply(u, function(v) {v$fit$results$Accuracy})}
 )
 write.table(data.frame(M=rownames(modelFits10Accs), modelFits10Accs),
         file="modelFits10Accs.tsv", sep="\t", row.names=FALSE)
-
+	
 
 ## modelFits20 = lapply(X=xnames, FUN=function(setname) {
 ##     return(lapply(X=fitters, FUN=function(fitter) {

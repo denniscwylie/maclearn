@@ -4,19 +4,22 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from pandas import Series
+import plotnine as gg
 import sklearn as sk
-import sklearn.cross_validation as cross_validation
-from sklearn.cross_validation import ShuffleSplit
+import sklearn.model_selection as model_selection
+from sklearn.model_selection import ShuffleSplit
 import sklearn.feature_selection as feature_selection
 import sklearn.neighbors as neighbors
 import sklearn.pipeline as pipeline
+
+import warnings
+warnings.filterwarnings("ignore")
 
 import pcaextractor
 import MaclearnUtilities
 from MaclearnUtilities import safeFactorize
 
 plt.ion()
-plt.style.use("fivethirtyeight")
 
 import RestrictedData
 xs = RestrictedData.xs
@@ -33,27 +36,19 @@ def pandaize(f):
 
 @pandaize
 def cross_val_score_pd(estimator, X, y, **kwargs):
-    return cross_validation.cross_val_score(
+    return model_selection.cross_val_score(
             estimator, X, y, **kwargs)
 
 
-ys = {
-    'bottomly' : annots['bottomly'].strain,
-    'patel' : annots['patel'].SubType,
-    'montastier' : annots['montastier'].Time,
-    'hess' : annots['hess'].pCRtxt
-}
-
 knnClass = neighbors.KNeighborsClassifier(n_neighbors=3)
-cvSchedules = {k : ShuffleSplit(len(ys[k]),
-                                n_iter = 5,
+cvSchedules = {k : ShuffleSplit(n_splits = 5,
                                 test_size = 0.2,
                                 random_state = 123)
                for k in xnorms}
 knnCvAccs = {k : np.mean(cross_val_score_pd(estimator = knnClass,
-                                         X = xnorms[k],
-                                         y = ys[k],
-                                         cv = cvSchedules[k]))
+                                            X = xnorms[k],
+                                            y = ys[k],
+                                            cv = cvSchedules[k].split(xnorms[k])))
              for k in xnorms}
 
 
@@ -68,9 +63,9 @@ fsKnnFitter = pipeline.Pipeline([
 ])
 
 fsKnnCvAccs = {k : np.mean(cross_val_score_pd(estimator = fsKnnFitter,
-                                           X = xnorms[k],
-                                           y = ys[k],
-                                           cv = cvSchedules[k]))
+                                              X = xnorms[k],
+                                              y = ys[k],
+                                              cv = cvSchedules[k].split(xnorms[k])))
                for k in xnorms}
 
 
@@ -91,9 +86,9 @@ def fitKnnWithNFeat(n, setname, cv=None):
                 n_neighbors=3))
     ])
     return np.mean(cross_val_score_pd(estimator = fsKnnFitter,
-                                   X = xnorms[setname],
-                                   y = ys[setname],
-                                   cv = cv))
+                                      X = xnorms[setname],
+                                      y = ys[setname],
+                                      cv = cv.split(xnorms[setname])))
 
 accsByNFeats = OrderedDict([(s, OrderedDict([(n, fitKnnWithNFeat(n, s))
                                              for n in nFeatures]))
@@ -106,14 +101,14 @@ plotData = pd.concat([DataFrame({"set" : s,
                       for s in accsByNFeats
                       for p in accsByNFeats[s]],
                      axis = 0)
-plt.clf()
-ax = plt.subplot(111)
-for s in plotData['set'].unique():
-    plotData.ix[plotData['set']==s].plot(x = "p",
-                                         y = "acc",
-                                         logx = True,
-                                         ax = ax,
-                                         label = s)
+plotData['acc'] = plotData['acc'].astype(float)
+
+plt.close()
+ggo = gg.ggplot(plotData, gg.aes(x='p', y='acc', color='set'))
+ggo += gg.geom_line()
+ggo += gg.scale_x_log10()
+ggo += gg.theme_bw()
+print(ggo)
 
 # plotData.to_csv("KnnRealAccuracyByNFeat.tsv",
 #                 sep = "\t",
@@ -132,12 +127,12 @@ feKnnFitter = pipeline.Pipeline([
 
 xmod = feKnnFitter.fit(np.array(xnorms['patel']), np.array(ys['patel']))
 xcv = cross_val_score_pd(feKnnFitter, xnorms['patel'], ys['patel'],
-                         cv=cvSchedules['patel'])
+                         cv=cvSchedules['patel'].split(xnorms['patel']))
 
 feKnnCvAccs = {k : np.mean(cross_val_score_pd(estimator = feKnnFitter,
-                                           X = xnorms[k],
-                                           y = ys[k],
-                                           cv = cvSchedules[k]))
+                                              X = xnorms[k],
+                                              y = ys[k],
+                                              cv = cvSchedules[k].split(xnorms[k])))
                for k in xnorms}
 
 
@@ -156,9 +151,9 @@ def fitKnnWithNPcs(n, setname, cv=None):
                 n_neighbors=3))
     ])
     return np.mean(cross_val_score_pd(estimator = feKnnFitter,
-                                   X = xnorms[setname],
-                                   y = ys[setname],
-                                   cv = cv))
+                                      X = xnorms[setname],
+                                      y = ys[setname],
+                                      cv = cv.split(xnorms[setname])))
 
 accsByNPcs = OrderedDict([(s, OrderedDict([(n, fitKnnWithNPcs(n, s))
                                            for n in npcs]))
@@ -171,11 +166,11 @@ plotData = pd.concat([DataFrame({"set" : s,
                       for s in accsByNPcs
                       for p in accsByNPcs[s]],
                      axis = 0)
-plt.clf()
-ax = plt.subplot(111)
-for s in plotData['set'].unique():
-    plotData.ix[plotData['set']==s].plot(x = "p",
-                                         y = "acc",
-                                         logx = True,
-                                         ax = ax,
-                                         label = s)
+plotData['acc'] = plotData['acc'].astype(float)
+
+plt.close()
+ggo = gg.ggplot(plotData, gg.aes(x='p', y='acc', color='set'))
+ggo += gg.geom_line()
+ggo += gg.scale_x_log10()
+ggo += gg.theme_bw()
+print(ggo)

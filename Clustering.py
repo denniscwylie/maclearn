@@ -83,6 +83,8 @@ plt.close()
 sns.clustermap(xsim2.transpose(), method='complete', col_colors=heatColors)
 
 
+## HERE
+
 ## -----------------------------------------------------------------
 ## on real data...
 ## -----------------------------------------------------------------
@@ -93,8 +95,8 @@ annots = RestrictedData.annots
 ys = RestrictedData.ys
 ynums = RestrictedData.ynums
 
-bottomlyHighVar = xnorms['bottomly'].columns[xnorms['bottomly'].std() > 1.25]
-heatX = xnorms['bottomly'][bottomlyHighVar].transpose()
+shenHighVar = xnorms['shen'].columns[xnorms['shen'].std() > 2]
+heatX = xnorms['shen'][shenHighVar].transpose()
 ## remove overall gene-means from data for more useful plot
 heatX = heatX.subtract(heatX.mean(axis=1), axis=0)
 ## pay attention to changes around mean, not far from it
@@ -102,9 +104,21 @@ maxLogFoldChange = 2.5
 heatX[heatX > maxLogFoldChange] = maxLogFoldChange
 heatX[heatX < -maxLogFoldChange] = -maxLogFoldChange
 
-heatColors = pd.Series(['#000000']*heatX.shape[1], index=heatX.columns)
-heatColors.ix[ys['bottomly'] == 'DBA/2J'] = '#FF0066'
-heatColors = pd.DataFrame({'Mouse Strain' : heatColors})
+# heatColors = pd.Series(['#000000']*heatX.shape[1], index=heatX.columns)
+# heatColors.ix[ys['shen'] == 'DBA/2J'] = '#FF0066'
+# heatColors = pd.DataFrame({'Mouse Strain' : heatColors})
+
+heatColors = pd.Series({
+    'circulatory' : 'firebrick',
+    'digestive/excretory' : 'goldenrod',
+    'lymphatic' : 'lightseagreen',
+    'nervous' : 'darkorchid',
+    'other' : 'darkslategray',
+    'respiratory' : 'dodgerblue'
+}).reindex(annots['shen']['System'].values)
+heatColors.index = annots['shen'].index
+heatColors = pd.DataFrame({'System' : heatColors})
+heatColors = heatColors.reindex(heatX.columns)
 
 plt.close()
 cm = sns.clustermap(heatX, method='complete', col_colors=heatColors, figsize=(10, 10))

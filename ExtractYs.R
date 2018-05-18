@@ -1,5 +1,5 @@
 ys = list(
-    bottomly = annots$bottomly$strain,
+    shen = annots$shen$Nervous,
     patel = annots$patel$SubType,
     montastier = annots$montastier$Time,
     hess = annots$hess$pCRtxt

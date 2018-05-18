@@ -314,8 +314,9 @@ PearsonSelector = function(nFeat, type="abs") {
 
 
 
-PcaExtractor = function(k, center=c("both", "column", "row", "none"),
-        scale=c("none", "column", "row")) {
+PcaExtractor = function(k,
+                        center=c("col", "row", "both", "none"),
+                        scale=c("none", "column", "row")) {
     k = k
     center = match.arg(center)
     scale = match.arg(scale)

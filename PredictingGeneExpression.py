@@ -4,11 +4,12 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
+import plotnine as gg
 import scipy as sp
 import scipy.stats as stats
 import sklearn as sk
-import sklearn.cross_validation as cross_validation
-from sklearn.cross_validation import ShuffleSplit
+import sklearn.model_selection as model_selection
+from sklearn.model_selection import ShuffleSplit
 import sklearn.feature_selection as feature_selection
 import sklearn.linear_model as linear_model
 import sklearn.pipeline as pipeline
@@ -17,7 +18,6 @@ import MaclearnUtilities
 from MaclearnUtilities import bhfdr, colcor
 
 plt.ion()
-plt.style.use("fivethirtyeight")
 
 def pandaize(f):
     def pandaized(estimator, X, y, **kwargs):
@@ -26,7 +26,7 @@ def pandaize(f):
 
 @pandaize
 def cross_val_score_pd(estimator, X, y, **kwargs):
-    return cross_validation.cross_val_score(estimator, X, y, **kwargs)
+    return model_selection.cross_val_score(estimator, X, y, **kwargs)
 
 
 ## -----------------------------------------------------------------
@@ -39,13 +39,13 @@ x = readTab("rnaseq/GSE57872/GSE57872_DataMatrixMapped.tsv.gz").transpose()
 y = x.BRCA1
 x0 = x[ x.columns[x.columns != "BRCA1"] ]
 
-cvSched = ShuffleSplit(len(y), n_iter=10, test_size=0.1, random_state=123)
+cvSched = ShuffleSplit(n_splits=10, test_size=0.1, random_state=123)
 
 corPVals = colcor(x0, y)['p']
 corQVals = bhfdr(corPVals)
 corQVals.sort_values(inplace=False).head()
 
-plt.clf()
+plt.close()
 ax = plt.subplot(111)
 x.plot.scatter(x="CDK1", y="BRCA1", ax=ax)
 
@@ -75,7 +75,7 @@ cvR2s_unreg = Series(OrderedDict([
     (n, np.mean(cross_val_score_pd(copy.deepcopy(brca1Modelers[n]),
                                    X = x0,
                                    y = y,
-                                   cv = cvSched)))
+                                   cv = cvSched.split(x0))))
     for n in nFeats
 ]))
 
@@ -130,25 +130,20 @@ cvR2s_L1 = Series(OrderedDict([
 plotdata = DataFrame({
     "Number Potential Features" : nFeats * 3,
     "Rsquared" : pd.concat([cvR2s_unreg, cvR2s_L2, cvR2s_L1]),
-    "Regularization" : (['none']*len(nFeats) +
+    "Regularization" : (['-']*len(nFeats) +
                         ['L2/ridge']*len(nFeats) +
                         ['L1/lasso']*len(nFeats))
 })
 plotdata.index = (plotdata["Number Potential Features"].apply(str) + "_" +
                 plotdata["Regularization"])
-plotdata = plotdata.ix[plotdata.Rsquared > 0]
+plotdata = plotdata.loc[plotdata.Rsquared > 0]
 
-plt.clf()
-ax = plt.subplot(111)
-regStyles = {'none' : '-', 'L2/ridge' : '--', 'L1/lasso' : ':'}
-for reg in plotdata["Regularization"].unique():
-    regdata = plotdata.ix[plotdata["Regularization"] == reg]
-    regdata.sort_values("Number Potential Features")
-    regdata.plot(x = "Number Potential Features",
-                 y = "Rsquared",
-                 color = "black",
-                 style = regStyles[reg],
-                 label = reg,
-                 logx = True,
-                 ax = ax)
-                                                  
+plt.close()
+ggo = gg.ggplot(plotdata, gg.aes(x = 'Number Potential Features',
+                                 y = 'Rsquared',
+                                 linetype = 'Regularization'))
+ggo += gg.geom_line()
+ggo += gg.theme_bw()
+ggo += gg.scale_x_log10()
+print(ggo)
+

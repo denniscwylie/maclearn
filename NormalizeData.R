@@ -1,24 +1,19 @@
 ## -----------------------------------------------------------------
 ## normalization
 ## -----------------------------------------------------------------
-uqnormalize = function(x, MARGIN=1, scale=100) {
-    ## geneDetected = (apply(X=x, MARGIN=3-MARGIN, FUN=sum) > 0)
-    geneDetected = if (MARGIN == 1) {
-        colSums(x) > 0
-    } else if (MARGIN == 2) {
-        rowSums(x) > 0
-    }
-    return(scale * sweep(
-        x = x,
-        MARGIN = MARGIN,
-        STATS = apply(X=x, MARGIN=MARGIN,
-                FUN=function(z) {quantile(z[geneDetected], 0.75)}),
-        FUN = `/`
-    ))
+rleNormalize = function(x) {
+    require(matrixStats)
+    xno0 = x[ , colMins(x) > 0]
+    geoMeans = exp(colMeans(log(xno0)))
+    sizeFactors = rowMedians(sweep(xno0, 2, geoMeans, `/`))
+    names(sizeFactors) = rownames(x)
+    return(sweep(x, 1, sizeFactors, `/`))
 }
 
 xnorms = list()
-xnorms$bottomly = log2(uqnormalize(xs$bottomly) + 1)
+
+## shen set already normalizezd
+xnorms$shen = xs$shen
 
 ## patel set already normalized
 xnorms$patel = xs$patel
@@ -39,4 +34,3 @@ xnorms$montastier = meanCenterAndImpute(xs$montastier)
 
 ## hess set already normalized
 xnorms$hess = xs$hess
-

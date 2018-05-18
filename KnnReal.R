@@ -133,7 +133,7 @@ feKnnFitter = SolderedPipeFitter(
 
 ## feKnnFits = mapply(
 ##     FUN = train,
-##    lapply(1:length(xnorms), function(...) {feKnnFitter})
+##     lapply(1:length(xnorms), function(...) {feKnnFitter}),
 ##     xnorms,
 ##     ys,
 ##     MoreArgs = list(

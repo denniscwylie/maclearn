@@ -21,29 +21,29 @@ ynums = lapply(ys, function(y) {
 ## -----------------------------------------------------------------
 ## t.test example (using equal variance t test)
 ## -----------------------------------------------------------------
-botgene = xnorms$bottomly[ , "ENSMUSG00000027855"]
-botgene_C57BL = botgene[ys$bottomly == "C57BL/6J"]
-botgene_DBA = botgene[ys$bottomly == "DBA/2J"]
-t.test(botgene_C57BL, botgene_DBA, var.equal=TRUE)
+shengene = xnorms$shen[ , "NM_008161"]
+shengene_nervous = shengene[ys$shen == "TRUE"]
+shengene_other = shengene[ys$shen == "FALSE"]
+t.test(shengene_nervous, shengene_other, var.equal=TRUE)
 
-cor(botgene, ynums$bottomly, method="pearson")
+cor.test(shengene, ynums$shen, method="pearson")
 
 
 ## -----------------------------------------------------------------
-## t tests for all genes in bottomly set
+## t tests for all genes in shen set
 ## -----------------------------------------------------------------
-tBotAll = colttests(as.matrix(xnorms$bottomly), ys$bottomly)
-tBotAll$q.value = p.adjust(tBotAll$p.value, method="fdr")
+tShenAll = colttests(as.matrix(xnorms$shen), ys$shen)
+tShenAll$q.value = p.adjust(tShenAll$p.value, method="fdr")
 ## let's try something else...
-xscBot = scale(xnorms$bottomly, center=TRUE, scale=TRUE)
-summary(colMeans(xscBot))
-summary(colSds(xscBot))
-yscBot = scale(ynums$bottomly)
-tBotAll$pearson = as.numeric( (t(yscBot) %*% xscBot) / (length(yscBot)-1) )
+xscShen = scale(xnorms$shen, center=TRUE, scale=TRUE)
+summary(colMeans(xscShen))
+summary(colSds(xscShen))
+yscShen = scale(ynums$shen)
+tShenAll$pearson = as.numeric( (t(yscShen) %*% xscShen) / (length(yscShen)-1) )
 ## sort by p.value
-tBotAll = tBotAll[order(tBotAll$p.value), ]
+tShenAll = tShenAll[order(tShenAll$p.value), ]
 
-plot(tBotAll$pearson, tBotAll$p.value, log='y', pch=16, cex=0.5)
+plot(tShenAll$pearson, tShenAll$p.value, log='y', pch=16, cex=0.5)
 
 
 ## -----------------------------------------------------------------
@@ -73,8 +73,8 @@ lapply(tTestResults, head)
 
 
 boxstrip(
-    xnorms$bottomly[ rownames(tTestResults$bottomly)[1:9] ],
-    ys$bottomly,
+    xnorms$shen[ rownames(tTestResults$shen)[1:9] ],
+    ys$shen,
     colscale = c("black", "red")
 )
 

@@ -9,17 +9,16 @@ xs = LoadData.xs
 annots = LoadData.annots
 
 
-def uqnormalize(x, axis=0, scale=100):
-    geneDetected = (x.sum(axis=axis) > 0)
-    if axis == 0:
-        xgd = x[ x.columns[geneDetected] ]
-    elif axis == 1:
-        xgd = x.ix[geneDetected]
-    normfacs = np.percentile(xgd, q=75, axis=1-axis)
-    return scale * x.divide(normfacs, axis=axis)
+def rleNormalize(x):
+    xno0 = x.loc[:, x.min(axis=0) > 0]
+    geoMeans = np.exp(np.log(xno0).mean(axis=0))
+    sizeFactors = xno0.divide(geoMeans, axis=1).median(axis=1)
+    return x.divide(sizeFactors, axis=0)
 
 xnorms = {}
-xnorms['bottomly'] = np.log2(uqnormalize(xs['bottomly']) + 1)
+
+## shen set already normalized
+xnorms['shen'] = xs['shen'].copy()
 
 ## patel set already normalized
 xnorms['patel'] = xs['patel'].copy()
@@ -29,7 +28,7 @@ def meanCenter(x, axis=0):
     if axis == 0:
         xnonans = x[ x.columns[~geneHasNans] ]
     elif axis == 1:
-        xnonans = x.ix[~geneHasNans]
+        xnonans = x.loc[~geneHasNans]
     means = xnonans.mean(axis=1-axis)
     return x.add(-means, axis=axis)
 
@@ -40,7 +39,7 @@ def meanCenterAndImpute(x, axis=0, imputeAt=None):
     if axis == 0:
         xnonans = x[ x.columns[~geneHasNans] ]
     elif axis == 1:
-        xnonans = x.ix[~geneHasNans]
+        xnonans = x.loc[~geneHasNans]
     means = xnonans.mean(axis=1-axis)
     out = x.copy()
     out[np.isnan(out)] = imputeAt

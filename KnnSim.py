@@ -1,11 +1,11 @@
 from collections import OrderedDict
-# import ggplot
 import itertools
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
 from pandas import Series
+import plotnine as gg
 import sklearn as sk
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -21,13 +21,14 @@ knnFit = KNeighborsClassifier(n_neighbors=3)
 knnFit.fit(np.array(x2_train['x']), np.array(x2_train['y']))
 knnResub = Series(knnFit.predict(x2_train['x']),
                   index = x2_train['y'].index)
-sum(np.diag(pd.crosstab(knnResub, x2_train['y'])))
+np.sum(np.diag(pd.crosstab(knnResub, x2_train['y'])))
+
 x2_test = SimData.simulate2Group(n = 100,
                                  p = 2,
                                  effect = [1.25] * 2)
 knnTest = Series(knnFit.predict(x2_test['x']),
                  index = x2_test['y'].index)
-sum(np.diag(pd.crosstab(knnTest, x2_test['y'])))
+np.sum(np.diag(pd.crosstab(knnTest, x2_test['y'])))
 
 
 def expandGrid(od):
@@ -80,13 +81,13 @@ def knnSimulate(param):
     return out
 
 
-knnResults = [knnSimulate(parGrid.ix[i])
+knnResults = [knnSimulate(parGrid.iloc[i])
               for i in range(parGrid.shape[0])]
 
 
 repeatedKnnResults = []
 for r in range(10):
-    repeatedKnnResults.extend(knnSimulate(parGrid.ix[i])
+    repeatedKnnResults.extend(knnSimulate(parGrid.iloc[i])
                               for i in range(parGrid.shape[0]))
 
 knnResultsSimplified = DataFrame([(x['p'],
@@ -100,50 +101,23 @@ knnResultsSimplified = DataFrame([(x['p'],
                                             'testAccuracy'])
 
 ggdata = pd.concat(
-    [DataFrame({'log10(p)' : np.log10(knnResultsSimplified.p),
+    [DataFrame({'p' : knnResultsSimplified.p,
                 'k' : knnResultsSimplified.k.apply(int),
                 'type' : 'resub',
                 'Accuracy' : knnResultsSimplified.resubAccuracy}),
-     DataFrame({'log10(p)' : np.log10(knnResultsSimplified.p),
+     DataFrame({'p' : knnResultsSimplified.p,
                 'k' : knnResultsSimplified.k.apply(int),
                 'type' : 'test',
                 'Accuracy' : knnResultsSimplified.testAccuracy})],
     axis = 0
 )
 
-plt.clf()
-plotIndex = 1
-for k in ggdata['k'].unique():
-    ax = plt.subplot(int("22"+str(plotIndex)))
-    kdata = ggdata.ix[ggdata['k'] == k]
-    kdata.ix[kdata.type=="resub"].plot.scatter(x = "log10(p)",
-                                               y = "Accuracy",
-                                               # label = "resub",
-                                               color = (1, 0, 0, 0.7),
-                                               edgecolors = "none",
-                                               ax = ax)
-    kdata.ix[kdata.type=="test"].plot.scatter(x = "log10(p)",
-                                              y = "Accuracy",
-                                              # label = "test",
-                                              color = (0.2, 0.2, 0.2, 0.7),
-                                              edgecolors = "none",
-                                              ax = ax)
-    plt.title(str(k))
-    if plotIndex < 3:
-        plt.xlabel("")
-    if plotIndex in [2, 4]:
-        plt.ylabel("")
-    plotIndex += 1
-
-
-# ggobj = ggplot.ggplot(
-#     data = ggdata,
-#     aesthetics = ggplot.aes(x='log10(p)', y='Accuracy',
-#                             color='type', group='type', linetype='type')
-# )
-# ggobj += ggplot.theme_bw()
-# # ggobj += ggplot.scale_x_log()
-# ggobj += ggplot.geom_point(alpha=0.6)
-# ggobj += ggplot.stat_smooth()
-# ggobj += ggplot.facet_wrap('k') 
-# print(ggobj)
+plt.close()
+ggo = gg.ggplot(ggdata, gg.aes(x='p', y='Accuracy',
+                               color='type', group='type', linetype='type'))
+ggo += gg.facet_wrap('~ k')
+ggo += gg.scale_x_log10()
+ggo += gg.geom_point(alpha=0.6)
+ggo += gg.stat_smooth()
+ggo += gg.theme_bw()
+print(ggo)

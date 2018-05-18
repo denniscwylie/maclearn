@@ -66,18 +66,17 @@ pheatmap(t(xsim2), annotation=heatY,
 ## -----------------------------------------------------------------
 load("prepared_datasets.RData")
 
-hcBottomly = hclust(dist(xnorms$bottomly), method="complete")
-## pdf("BottomlyHClust.pdf", h=5, w=6)
-plot(hcBottomly)
+hcShen = hclust(dist(xnorms$shen), method="complete")
+## pdf("ShenHClust.pdf", h=6, w=7.25)
+plot(hcShen)
 ## garbage = dev.off()
 
-load("bottomlyGeneSyms.RData")
-bottomlyHighVar = colnames(xnorms$bottomly)[
-        apply(xnorms$bottomly, 2, sd) > 1.25]
-heatX = t(xnorms$bottomly[ , bottomlyHighVar])
+load("shenGeneAnnot.RData")
+shenHighVar = colnames(xnorms$shen)[apply(xnorms$shen, 2, sd) > 2]
+heatX = t(xnorms$shen[ , shenHighVar])
 rownames(heatX) = ifelse(
-    rownames(heatX) %in% names(bottomlyGeneSyms),
-    bottomlyGeneSyms[rownames(heatX)],
+    rownames(heatX) %in% as.character(shenGeneAnnot$gene),
+    shenGeneSyms[rownames(heatX)],
     rownames(heatX)
 )
 ## remove overall gene-means from data for more useful plot
@@ -86,12 +85,19 @@ heatX = data.frame(sweep(heatX, 1, rowMeans(heatX)), check.names=FALSE)
 maxLogFoldChange = 2.5
 heatX[heatX > maxLogFoldChange] = maxLogFoldChange
 heatX[heatX < -maxLogFoldChange] = -maxLogFoldChange
-heatY = data.frame(row.names=colnames(heatX), strain=ys$bottomly)
-## pdf("BottomlyHighVarHeatmap.pdf", h=8, w=8*1.3, onefile=FALSE)
+heatY = data.frame(row.names=colnames(heatX), System=annots$shen$System)
+## pdf("ShenHighVarHeatmap.pdf", h=8, w=8*1.3, onefile=FALSE)
 pheatmap(
     heatX,
     annotation_col = heatY,
-    annotation_colors = list(
-    strain = c('C57BL/6J'='black', 'DBA/2J'=rgb(1, 0, 0.4)))
+    annotation_colors = list(System = c(
+        'circulatory' = 'firebrick',
+        'digestive/excretory' = 'goldenrod',
+        'lymphatic' = 'lightseagreen',
+        'nervous' = 'darkorchid',
+        'other' = 'darkslategray',
+        'respiratory' = 'dodgerblue'
+    )),
+	show_rownames = FALSE
 )
 ## garbage = dev.off()

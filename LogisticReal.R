@@ -89,7 +89,7 @@ accsByNFeats = lapply(
 )
 accsByNFeats = unlist(accsByNFeats)
 
-accPlot(
+logAccResults = accPlot(
     accsByNFeats,
     dataFile = "LogisticRealAccuracyByNFeat_R.tsv",
     plotFile = "LogisticRealAccuracyByNFeat.pdf"
@@ -176,3 +176,24 @@ pdf("LogisticRealAccuracyByNFeat.pdf", h=5, w=5*1.325)
 print(ggobj)
 garbage = dev.off()
 
+
+## -----------------------------------------------------------------
+allAccResults = rbind(
+    data.frame(logAccResults$data, regularization='none'),
+    data.frame(l1AccResults$data, regularization='L1'),
+    data.frame(l2AccResults$data, regularization='L2')
+)
+
+ggo = ggplot(allAccResults, aes(x=p, y=acc,
+                                color=set, linetype=regularization))
+ggo = ggo + facet_wrap(~ set, scales='free_y')
+ggo = ggo + geom_line()
+ggo = ggo + theme_bw()
+ggo = ggo + theme(panel.grid.minor=element_blank(),
+                  panel.grid.major=element_blank())
+ggo = ggo + scale_x_log10()
+ggo = ggo + scale_color_manual(values=c("darkgray", "black",
+                                        "red", "dodgerblue3"))
+pdf('LogisticRealAccuracyByNFeat_WithRegularization.pdf', h=4, w=6)
+print(ggo)
+garbage = dev.off()

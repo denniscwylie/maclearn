@@ -5,10 +5,11 @@ import numpy as np
 import pandas
 from pandas import DataFrame
 from pandas import Series
+import plotnine as gg
 import sklearn
 from sklearn.neighbors import KNeighborsClassifier
-import sklearn.cross_validation
-from sklearn.cross_validation import cross_val_score
+import sklearn.model_selection
+from sklearn.model_selection import cross_val_score
 
 import SimData
 
@@ -23,6 +24,7 @@ cvAccs = cross_val_score(estimator = knnClass,
                          cv = 5)
 cvAccEst = np.mean(cvAccs)
 knnClass.fit(np.array(x2_train['x']), np.array(x2_train['y']))
+
 x2_test = SimData.simulate2Group(n = 100,
                                  p = 2,
                                  effect = [1.25] * 2)
@@ -80,7 +82,7 @@ def knnSimulate(param, nFold=5):
 
 repeatedKnnResults = []
 for r in range(5):
-    repeatedKnnResults.extend(knnSimulate(parGrid.ix[i])
+    repeatedKnnResults.extend(knnSimulate(parGrid.iloc[i])
                               for i in range(parGrid.shape[0]))
 
 knnResultsSimplified = DataFrame([(x['p'],
@@ -95,25 +97,22 @@ knnResultsSimplified = DataFrame([(x['p'],
 
 
 ggdata = pandas.concat(
-    [DataFrame({'log10(p)' : np.log10(knnResultsSimplified.p),
+    [DataFrame({'p' : knnResultsSimplified.p,
                 'k' : knnResultsSimplified.k.apply(int),
                 'type' : 'cv',
                 'Accuracy' : knnResultsSimplified.cvAccuracy}),
-     DataFrame({'log10(p)' : np.log10(knnResultsSimplified.p),
+     DataFrame({'p' : knnResultsSimplified.p,
                 'k' : knnResultsSimplified.k.apply(int),
                 'type' : 'test',
                 'Accuracy' : knnResultsSimplified.testAccuracy})],
     axis = 0
 )
 
-ggobj = ggplot.ggplot(
-    data = ggdata,
-    aesthetics = ggplot.aes(x='log10(p)', y='Accuracy',
-                            color='type', group='type', linetype='type')
-)
-ggobj += ggplot.theme_bw()
-# ggobj += ggplot.scale_x_log()
-ggobj += ggplot.geom_point(alpha=0.6)
-ggobj += ggplot.stat_smooth()
-ggobj += ggplot.facet_wrap('k') 
-print(ggobj)
+ggo = gg.ggplot(ggdata, gg.aes(x='p', y='Accuracy',
+                               color='type', group='type', linetype='type'))
+ggo += gg.scale_x_log10()
+ggo += gg.geom_point(alpha=0.6)
+ggo += gg.stat_smooth()
+ggo += gg.facet_wrap('~ k')
+ggo += gg.theme_bw()
+print(ggo)

@@ -4,15 +4,18 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
+import plotnine as gg
 import sklearn as sk
-import sklearn.cross_validation as cross_validation
-from sklearn.cross_validation import ShuffleSplit
+import sklearn.model_selection as model_selection
+from sklearn.model_selection import ShuffleSplit
 import sklearn.feature_selection as feature_selection
 import sklearn.linear_model as linear_model
 import sklearn.pipeline as pipeline
 
+import warnings
+warnings.filterwarnings("ignore")
+
 plt.ion()
-plt.style.use('fivethirtyeight')
 
 import MaclearnUtilities
 from MaclearnUtilities import bhfdr, colcor
@@ -24,8 +27,7 @@ annots = RestrictedData.annots
 ys = RestrictedData.ys
 ynums = RestrictedData.ynums
 
-cvSchedules = {k : ShuffleSplit(len(ys[k]),
-                                n_iter = 5,
+cvSchedules = {k : ShuffleSplit(n_splits = 5,
                                 test_size = 0.2,
                                 random_state = 123)
                for k in xnorms}
@@ -38,7 +40,7 @@ def pandaize(f):
 
 @pandaize
 def cross_val_score_pd(estimator, X, y, **kwargs):
-    return cross_validation.cross_val_score(
+    return model_selection.cross_val_score(
             estimator, X, y, **kwargs)
 
 def fitModelWithNFeat(fitter, n, setname, cv=None):
@@ -54,22 +56,28 @@ def fitModelWithNFeat(fitter, n, setname, cv=None):
     return np.mean(cross_val_score_pd(estimator = fsFitter,
                                       X = xnorms[setname],
                                       y = ynums[setname],
-                                      cv = cv))
+                                      cv = cv.split(xnorms[setname])))
 
 def accPlot(accsByNFeats):
-    ax = plt.subplot(111)
+    plotdata = []
     for s in accsByNFeats:
-        plotdata = pd.concat([DataFrame({"p" : p,
-                                         "acc" : accsByNFeats[s][p]},
-                                        index = [str(p)])
-                              for p in accsByNFeats[s]],
-                             axis = 0)
-        plotdata.plot(x = "p",
-                      y = "acc",
-                      ax = ax,
-                      logx = True,
-                      label = s)
-
+        plotdata.append(pd.concat([DataFrame({"p" : p,
+                                              "acc" : accsByNFeats[s][p],
+                                              "set" : s},
+                                             index = [str(p)])
+                                   for p in accsByNFeats[s]],
+                                  axis = 0))
+    ggd = pd.concat(plotdata)
+    ggd['acc'] = ggd['acc'].astype(float)
+    ggo = gg.ggplot(ggd, gg.aes(x='p', y='acc', color='set'))
+    ggo += gg.geom_line(alpha=0.5)
+    ggo += gg.geom_point()
+    ggo += gg.theme_bw()
+    ggo += gg.scale_x_log10(breaks=[10, 100, 1000, 10000])
+    ggo += gg.scale_color_manual(values=['darkgray', 'black',
+                                         'red', 'dodgerblue'])
+    ggo += gg.ylab('Accuracy (5-fold CV)')
+    print(ggo)
 
 nFeatures = [2, 5, 10, 20, 50, 100, 200, 500,
              1000, 2000, 5000, 10000]
@@ -94,7 +102,7 @@ for s in accsByNFeats:
         if n > xnorms[s].shape[0]:
             accsByNFeats[s][n] = None
 
-plt.clf()
+plt.close()
 accPlot(accsByNFeats)
 
 
@@ -112,7 +120,7 @@ accsByNFeatsL2 = OrderedDict([(s,
                                             for n in nFeatures]))
                               for s in xnorms])
 
-plt.clf()
+plt.close()
 accPlot(accsByNFeatsL2)
 
 
@@ -131,5 +139,5 @@ accsByNFeatsL1 = OrderedDict([(s,
                                             for n in nFeatures]))
                               for s in xnorms])
 
-plt.clf()
+plt.close()
 accPlot(accsByNFeatsL1)

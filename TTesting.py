@@ -23,33 +23,33 @@ ynums = RestrictedData.ynums
 ## -----------------------------------------------------------------
 ## ttest example (using equal variance t test)
 ## -----------------------------------------------------------------
-botgene = xnorms['bottomly']['ENSMUSG00000027855']
-botgene_C57BL = botgene[ys['bottomly'] == 'C57BL/6J']
-botgene_DBA = botgene[ys['bottomly'] == 'DBA/2J']
-tout = stats.ttest_ind(np.array(botgene_C57BL),
-                             np.array(botgene_DBA),
-                             equal_var = True)
+shengene = xnorms['shen']['NM_008161']
+shengene_nervous = shengene[ys['shen']]
+shengene_other = shengene[~ys['shen']]
+tout = stats.ttest_ind(shengene_nervous.values,
+                       shengene_other.values,
+                       equal_var = True)
 
-stats.pearsonr(botgene, ynums['bottomly'])
+stats.pearsonr(shengene, ynums['shen'])
 
 
 ## -----------------------------------------------------------------
-## t tests for all genes in bottomly set
+## t tests for all genes in shen set
 ## -----------------------------------------------------------------
-tBotAll = colttests(xnorms['bottomly'], ynums['bottomly'])
-tBotAll['q'] = bhfdr(tBotAll.p)
+tShenAll = colttests(xnorms['shen'], ynums['shen'])
+tShenAll['q'] = bhfdr(tShenAll.p)
 ## let's try something else...
-xscBot = preprocessing.scale(xnorms['bottomly'])
-xscBot = pd.DataFrame(xscBot,
-                      index = xnorms['bottomly'].index,
-                      columns = xnorms['bottomly'].columns)
-xscBot.mean(axis=0)
-xscBot.std(axis=0)
+xscShen = preprocessing.scale(xnorms['shen'])
+xscShen = pd.DataFrame(xscShen,
+                      index = xnorms['shen'].index,
+                      columns = xnorms['shen'].columns)
+xscShen.mean(axis=0)
+xscShen.std(axis=0)
 
-yscBot = preprocessing.scale(ynums['bottomly'].astype('float'))
-tBotAll['pearson'] = np.dot(yscBot, xscBot) / len(yscBot)
+yscShen = preprocessing.scale(ynums['shen'].astype('float'))
+tShenAll['pearson'] = np.dot(yscShen, xscShen) / len(yscShen)
 ## sort by p
-tBotAll.sort_values('p', inplace=True)
+tShenAll.sort_values('p', inplace=True)
 
 
 ## -----------------------------------------------------------------
@@ -77,7 +77,7 @@ colors = {
     "montastier" : "black",
     "patel" : "darkgray",
     "hess" : "red",
-    "bottomly" : "darkred"
+    "shen" : "darkred"
 }
 for s in tTestResults:
     plotdata = pd.DataFrame({'gene' : tTestResults[s].index,
@@ -96,6 +96,6 @@ for s in tTestResults:
 compResults = gramSchmidtSelect(x = xnorms['patel'],
                                 y = ynums['patel'],
                                 g = 'NAMPT')
-compResults = compResults.ix[
+compResults = compResults.loc[
         compResults.abs().sort_values(ascending=False).index]
 

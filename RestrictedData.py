@@ -1,5 +1,3 @@
-import numpy
-import pandas
 from pandas import DataFrame
 from pandas import Series
 
@@ -34,10 +32,10 @@ annots['montastier'] = annots['montastier'].ix[montastierKeepers]
 ## extract ys
 ## -----------------------------------------------------------------
 ys = {
-    "bottomly" : annots["bottomly"].strain,
-    "patel" : annots["patel"].SubType,
-    "montastier" : annots["montastier"].Time,
-    "hess" : annots["hess"].pCRtxt
+    'shen' : annots['shen'].Nervous,
+    'patel' : annots['patel'].SubType,
+    'montastier' : annots['montastier'].Time,
+    'hess' : annots['hess'].pCRtxt
 }
 
 ynums = {k : MaclearnUtilities.safeFactorize(ys[k]) for k in ys}

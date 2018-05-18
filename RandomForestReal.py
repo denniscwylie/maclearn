@@ -4,11 +4,14 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame, Series
 import sklearn as sk
-import sklearn.cross_validation as cross_validation
-from sklearn.cross_validation import ShuffleSplit
+import sklearn.model_selection as model_selection
+from sklearn.model_selection import ShuffleSplit
 import sklearn.ensemble as ensemble
 import sklearn.feature_selection as feature_selection
 import sklearn.pipeline as pipeline
+
+import warnings
+warnings.filterwarnings("ignore")
 
 import MaclearnUtilities
 
@@ -19,8 +22,7 @@ annots = RestrictedData.annots
 ys = RestrictedData.ys
 ynums = RestrictedData.ynums
 
-cvSchedules = {k : ShuffleSplit(len(ys[k]),
-                                n_iter = 5,
+cvSchedules = {k : ShuffleSplit(n_splits = 5,
                                 test_size = 0.2,
                                 random_state = 123)
                for k in xnorms}
@@ -33,7 +35,7 @@ def pandaize(f):
 
 @pandaize
 def cross_val_score_pd(estimator, X, y, **kwargs):
-    return cross_validation.cross_val_score(estimator, X, y, **kwargs)
+    return model_selection.cross_val_score(estimator, X, y, **kwargs)
 
 def fitModelWithNFeat(fitter, n, setname, cv=None):
     if cv is None:
@@ -48,7 +50,7 @@ def fitModelWithNFeat(fitter, n, setname, cv=None):
     return np.mean(cross_val_score_pd(estimator = fsFitter,
                                       X = xnorms[setname],
                                       y = ynums[setname],
-                                      cv = cv))
+                                      cv = cv.split(xnorms[setname])))
 
 
 from sklearn.ensemble import RandomForestClassifier
