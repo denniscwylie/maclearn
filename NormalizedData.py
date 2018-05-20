@@ -9,11 +9,11 @@ xs = LoadData.xs
 annots = LoadData.annots
 
 
-def rleNormalize(x):
+def rleSizeFactors(x):
     xno0 = x.loc[:, x.min(axis=0) > 0]
     geoMeans = np.exp(np.log(xno0).mean(axis=0))
     sizeFactors = xno0.divide(geoMeans, axis=1).median(axis=1)
-    return x.divide(sizeFactors, axis=0)
+    return sizeFactors
 
 xnorms = {}
 

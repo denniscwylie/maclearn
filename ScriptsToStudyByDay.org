@@ -2,7 +2,7 @@
 | R               | Python            | Notes                               |
 |-----------------+-------------------+-------------------------------------|
 | LoadData.R      | LoadData.py       |                                     |
-| NormalizeData.R | NormalizedData.py | uq- and mean-center-normalization   |
+| NormalizeData.R | NormalizedData.py | RLE- and mean-center-normalization  |
 | Clustering.R    | Clustering.py     | k-means and hierarchical clustering |
 | PCA_intro.R     |                   |                                     |
 | PCA.R           | PCA.py            |                                     |

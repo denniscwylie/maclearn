@@ -1,13 +1,13 @@
 ## -----------------------------------------------------------------
 ## normalization
 ## -----------------------------------------------------------------
-rleNormalize = function(x) {
+rleSizeFactors = function(x) {
     require(matrixStats)
     xno0 = x[ , colMins(x) > 0]
     geoMeans = exp(colMeans(log(xno0)))
     sizeFactors = rowMedians(sweep(xno0, 2, geoMeans, `/`))
     names(sizeFactors) = rownames(x)
-    return(sweep(x, 1, sizeFactors, `/`))
+    return(sizeFactors)
 }
 
 xnorms = list()
