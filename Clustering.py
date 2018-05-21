@@ -83,8 +83,6 @@ plt.close()
 sns.clustermap(xsim2.transpose(), method='complete', col_colors=heatColors)
 
 
-## HERE
-
 ## -----------------------------------------------------------------
 ## on real data...
 ## -----------------------------------------------------------------

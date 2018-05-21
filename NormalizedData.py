@@ -48,4 +48,4 @@ def meanCenterAndImpute(x, axis=0, imputeAt=None):
 xnorms['montastier'] = meanCenterAndImpute(xs['montastier'])
 
 ## hess set already normalized
-xnorms['hess'] = xs['hess']
+xnorms['hess'] = xs['hess'].copy()
