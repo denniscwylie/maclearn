@@ -2,9 +2,9 @@
 ## load data
 ## -----------------------------------------------------------------
 readTab = function(file) {
-    if (grepl("gz$", file)) {
-        file = gzfile(file)
-    }
+    ## if (grepl("gz$", file)) {
+    ##     file = gzfile(file)
+    ## }
     read.table(file, sep="\t",
             header=TRUE, row.names=1, check.names=FALSE)
 }

@@ -49,7 +49,7 @@ annots['shen']['System'] = pd.Series({
     'testes' : 'other',
     'thymus' : 'lymphatic'
 }).reindex(annots['shen']['Tissue'].values).values
-annots['shen']['Nervous'] = annots['shen']['System'] == 'nervous'
+annots['shen']['Nervous'] = (annots['shen']['System'] == 'nervous')
 
 ## check that data objects (xs) are aligned with annot objects (annots)
 np.all([np.all(annots[k].index.to_series() == xs[k].index.to_series()) for k in xs])

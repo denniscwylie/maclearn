@@ -208,8 +208,8 @@ def ggpca(x, y=None, center='col', scale='none',
         alpha = 'alpha',
         label = 'label'
     ))
-    ggo += gg.geom_hline(yintercept=0, color='lightgray')
-    ggo += gg.geom_vline(xintercept=0, color='lightgray')
+    ggo += gg.geom_hline(yintercept=0, color='gray')
+    ggo += gg.geom_vline(xintercept=0, color='gray')
     ggo += gg.geom_point()
     ggo += gg.theme_bw()
     ggo += gg.geom_text(nudge_y=lnudge, size=lsize, show_legend=False)
