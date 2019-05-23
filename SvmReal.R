@@ -38,7 +38,7 @@ svmPlot = function(kernel="radial", cost=1, gamma=1/2, ...) {
     svm2$z = svmPred(svm2[ , 1], svm2[ , 2])
     svm2$class = y[rownames(svm2)]
     ggo2 = ggobj + geom_point(data=svm2,
-            aes(x=NAMPT, y=CFI, z=z, shape=class),
+            aes(x=NAMPT, y=CFI, shape=class),
             color="white", size=3, alpha=0.8) +
             scale_shape_manual(values=c(6, 17), guide=FALSE)
     cost = gsub("\\.", "p", as.character(round(cost, 2)))

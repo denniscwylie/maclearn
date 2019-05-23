@@ -43,7 +43,7 @@ ysim2 = simData2$y
 
 ## cluster pseudosamples
 ihcSim = hclust(xsim2)  ## generates error -- hclust wants distance matrix
-                      ## not raw data!
+                        ## not raw data!
 xdist = dist(xsim2, method="euclidean")
 ihcSim = hclust(xdist, method="average")
 plot(ihcSim)

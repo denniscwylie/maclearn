@@ -100,7 +100,7 @@ ggobj = ggplot(
 ) + theme_bw()
 ggobj = ggobj + scale_x_log10()
 ggobj = ggobj + geom_point(alpha=0.6)
-ggobj = ggobj + stat_smooth(degree=1)
+ggobj = ggobj + stat_smooth(method='loess', method.args=list(degree=1))
 ggobj = ggobj + facet_wrap(~k)
 ## pdf("KnnSimBoot632.pdf", h=5, w=5*1.175)
 print(ggobj)
