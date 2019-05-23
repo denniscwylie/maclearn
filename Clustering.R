@@ -98,6 +98,6 @@ pheatmap(
         'other' = 'darkslategray',
         'respiratory' = 'dodgerblue'
     )),
-	show_rownames = FALSE
+    show_rownames = FALSE
 )
 ## garbage = dev.off()

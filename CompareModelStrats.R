@@ -60,7 +60,7 @@ modelFits10Accs = sapply(
 )
 write.table(data.frame(M=rownames(modelFits10Accs), modelFits10Accs),
         file="modelFits10Accs.tsv", sep="\t", row.names=FALSE)
-	
+
 
 ## modelFits20 = lapply(X=xnames, FUN=function(setname) {
 ##     return(lapply(X=fitters, FUN=function(fitter) {

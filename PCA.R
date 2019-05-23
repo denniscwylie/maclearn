@@ -86,7 +86,7 @@ ggpca(xnorms$shen, annots$shen$System, cshow=0,
 ## ggo = ggo + xlab('')
 ## ggo = ggo + theme_classic()
 ## ggo = ggo + theme(axis.ticks.x=element_blank(),
-## 	              axis.ticks.y=element_blank(),
+##                      axis.ticks.y=element_blank(),
 ##                   axis.line.y=element_blank())
 ## ## pdf('shen2012_u1.pdf', h=2, w=10)
 ## print(ggo)
@@ -112,7 +112,7 @@ ggpca(xnorms$shen, annots$shen$System, cshow=0,
 ## ggo = ggo + xlab('')
 ## ggo = ggo + theme_classic()
 ## ggo = ggo + theme(axis.ticks.x=element_blank(),
-## 	              axis.ticks.y=element_blank(),
+##                      axis.ticks.y=element_blank(),
 ##                   axis.line.y=element_blank())
 ## ## png('shen2012_v1.png', h=(2/7)*1920, w=(10/7)*1920, res=288)
 ## print(ggo)
