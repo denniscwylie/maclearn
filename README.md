@@ -77,7 +77,7 @@ devtools::install_github('ramhiser/sparsediscrim')
 
 ### Day 1: Loading Data, Normalization, Unsupervised Analysis
 | R               | Python            | Notes                               |
-|-----------------+-------------------+-------------------------------------|
+|-----------------|-------------------|-------------------------------------|
 | LoadData.R      | LoadData.py       |                                     |
 | NormalizeData.R | NormalizedData.py | RLE- and mean-center-normalization  |
 | Clustering.R    | Clustering.py     | k-means and hierarchical clustering |
@@ -86,7 +86,7 @@ devtools::install_github('ramhiser/sparsediscrim')
 
 ### Day 2: knn classification, overfitting, cross-validation, feature selection
 | R            | Python        | Notes                                                  |
-|--------------+---------------+--------------------------------------------------------|
+|--------------|---------------|--------------------------------------------------------|
 | KnnSim.R     | KnnSim.py     | compare resub vs. test performance on simulated data   |
 | KnnSimCV.R   | KnnSimCV.py   | show cross-validation (cv) removes resub bias          |
 | BadFeatSel.R | BadFeatSel.py | supervised feature selection must be done under cv     |
@@ -95,7 +95,7 @@ devtools::install_github('ramhiser/sparsediscrim')
 
 ### Day 3: linear models, regularization, naive bayes
 | R                          | Python                      | Notes                       |
-|----------------------------+-----------------------------+-----------------------------|
+|----------------------------|-----------------------------|-----------------------------|
 | TTesting.R                 | TTesting.py                 |                             |
 | PredictingGeneExpression.R | PredictionGeneExpression.py |                             |
 | WhyRegularize.R            | WhyRegularize.py            |                             |
@@ -104,7 +104,7 @@ devtools::install_github('ramhiser/sparsediscrim')
   
 ### Day 4: svm, bootstrap, trees, random forests, boosting
 | R                    | Python                | Notes                                        |
-|----------------------+-----------------------+----------------------------------------------|
+|----------------------|-----------------------|----------------------------------------------|
 | SvmReal.R            | SvmReal.py            |                                              |
 | bootstrap_examples.R |                       | mostly taken from package bootstrap examples |
 | KnnSimBoot.R         |                       |                                              |
