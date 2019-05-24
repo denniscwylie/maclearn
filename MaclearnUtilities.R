@@ -197,11 +197,12 @@ boxstrip = function(x, y, colscale,
         xname="group", nrow, pointAlpha=0.6, boxAlpha=0.5, scales="fixed",
         print=TRUE) {
     require(ggplot2)
-    require(reshape2)
+    require(tidyr)
     if (length(names(y)) == 0) {
         names(y) = rownames(x)
     }
-    xmelt = melt(data.frame(row=rownames(x), x, check.names=FALSE))
+    xmelt = gather(data.frame(row=rownames(x), x, check.names=FALSE),
+                   'variable', 'value', -row)
     xmelt$row = factor(as.character(xmelt$row),
             levels=unique(xmelt$row))
     xmelt$group = y[as.character(xmelt$row)]

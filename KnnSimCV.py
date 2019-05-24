@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import ggplot
 import itertools
 import numpy as np
 import pandas
