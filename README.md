@@ -30,13 +30,14 @@ instructed to download several free software packages (including R
 packages and/or python libraries such as including pandas and
 sklearn).
 
-## R packages used:
+## R packages
 
 ### from CRAN
 
 The command below can be run within an R session to install most of
 the required packages from CRAN; **some of these may take a while to
-install, recommend installation prior to class.**
+install, recommend installation prior to class if you intend to run
+the R scripts.**
 
 ```R
 install.packages(c('ada', 'caret', 'devtools', 'e1071', 'ggplot2',
@@ -46,7 +47,7 @@ install.packages(c('ada', 'caret', 'devtools', 'e1071', 'ggplot2',
 
 ### from Bioconductor
 
-The package genefilter can be installed from Bioconductor using the
+The package **genefilter** can be installed from Bioconductor using the
 following code again run within an R session.
 
 ```R
@@ -56,15 +57,18 @@ BiocManager::install('genefilter')
 
 ### from github
 
-The package sparsediscrim can be installed from github using the
+The package **sparsediscrim** can be installed from github using the
 following code again run within an R session.
 
 ```R
 devtools::install_github('ramhiser/sparsediscrim')
 ```
 
-## Python modules used:
+## Python modules
 
+The following Python modules are used in the included scripts; again I
+would **recommend installing prior to class if you intend to run the
+Python scripts**:
 - numpy
 - scipy
 - pandas
