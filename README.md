@@ -11,10 +11,10 @@ problems). Participants have the opportunity to apply these methods as
 implemented in R and python to publicly available data.
 
 Lecture notes are provided in the four slide decks:
-- maclearn-1.pdf
-- maclearn-2.pdf
-- maclearn-3.pdf
-- maclearn-4.pdf
+- [maclearn-1.pdf](maclearn-1.pdf)
+- [maclearn-2.pdf](maclearn-2.pdf)
+- [maclearn-3.pdf](maclearn-3.pdf)
+- [maclearn-4.pdf](maclearn-4.pdf)
 
 The directories **microarray**, **pcr**, and **rnaseq** contain
 example data sets. Most of the remaining files in the repository are R
