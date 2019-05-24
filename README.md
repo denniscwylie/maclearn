@@ -76,38 +76,38 @@ devtools::install_github('ramhiser/sparsediscrim')
 ## Scripts to study by day
 
 ### Day 1: Loading Data, Normalization, Unsupervised Analysis
-| R               | Python            | Notes                               |
-|-----------------|-------------------|-------------------------------------|
-| LoadData.R      | LoadData.py       |                                     |
-| NormalizeData.R | NormalizedData.py | RLE- and mean-center-normalization  |
-| Clustering.R    | Clustering.py     | k-means and hierarchical clustering |
-| PCA_intro.R     |                   |                                     |
-| PCA.R           | PCA.py            |                                     |
+| R                                  | Python                                 | Notes                               |
+|------------------------------------+----------------------------------------+-------------------------------------|
+| [LoadData.R](LoadData.R)           | [LoadData.py](LoadData.py)             |                                     |
+| [NormalizeData.R](NormalizeData.R) | [NormalizedData.py](NormalizedData.py) | RLE- and mean-center-normalization  |
+| [Clustering.R](Clustering.R)       | [Clustering.py](Clustering.py)         | k-means and hierarchical clustering |
+| [PCA_intro.R](PCA_intro.R)         |                                        |                                     |
+| [PCA.R](PCA.R)                     | [PCA.py](PCA.py)                       |                                     |
 
 ### Day 2: knn classification, overfitting, cross-validation, feature selection
-| R            | Python        | Notes                                                  |
-|--------------|---------------|--------------------------------------------------------|
-| KnnSim.R     | KnnSim.py     | compare resub vs. test performance on simulated data   |
-| KnnSimCV.R   | KnnSimCV.py   | show cross-validation (cv) removes resub bias          |
-| BadFeatSel.R | BadFeatSel.py | supervised feature selection must be done under cv     |
-| KnnGrid.R    | KnnGrid.py    | compare cv acc for varying k parameter on real data    |
-| KnnReal.R    | KnnReal.py    | t-test feature selection/extraction + knn on real data |
+| R                            | Python                         | Notes                                                  |
+|------------------------------+--------------------------------+--------------------------------------------------------|
+| [KnnSim.R](KnnSim.R)         | [KnnSim.py](KnnSim.py)         | compare resub vs. test performance on simulated data   |
+| [KnnSimCV.R](KnnSimCV.R)     | [KnnSimCV.py](KnnSimCV.py)     | show cross-validation (cv) removes resub bias          |
+| [BadFeatSel.R](BadFeatSel.R) | [BadFeatSel.py](BadFeatSel.py) | supervised feature selection must be done under cv     |
+| [KnnGrid.R](KnnGrid.R)       | [KnnGrid.py](KnnGrid.py)       | compare cv acc for varying k parameter on real data    |
+| [KnnReal.R](KnnReal.R)       | [KnnReal.py](KnnReal.py)       | t-test feature selection/extraction + knn on real data |
 
 ### Day 3: linear models, regularization, naive bayes
-| R                          | Python                      | Notes                       |
-|----------------------------|-----------------------------|-----------------------------|
-| TTesting.R                 | TTesting.py                 |                             |
-| PredictingGeneExpression.R | PredictionGeneExpression.py |                             |
-| WhyRegularize.R            | WhyRegularize.py            |                             |
-| LogisticReal.R             | LogisticReal.py             |                             |
-| LdaIsLikeLogistic.R        |                             |                             |
+| R                                                        | Python                                                     | Notes |
+|----------------------------------------------------------+------------------------------------------------------------+-------|
+| [TTesting.R](TTesting.R)                                 | [TTesting.py](TTesting.py)                                 |       |
+| [PredictingGeneExpression.R](PredictingGeneExpression.R) | [PredictionGeneExpression.py](PredictionGeneExpression.py) |       |
+| [WhyRegularize.R](WhyRegularize.R)                       | [WhyRegularize.py](WhyRegularize.py)                       |       |
+| [LogisticReal.R](LogisticReal.R)                         | [LogisticReal.py](LogisticReal.py)                         |       |
+| [LdaIsLikeLogistic.R](LdaIsLikeLogistic.R)               |                                                            |       |
   
 ### Day 4: svm, bootstrap, trees, random forests, boosting
-| R                    | Python                | Notes                                        |
-|----------------------|-----------------------|----------------------------------------------|
-| SvmReal.R            | SvmReal.py            |                                              |
-| bootstrap_examples.R |                       | mostly taken from package bootstrap examples |
-| KnnSimBoot.R         |                       |                                              |
-| RandomForestReal.R   | RandomForestReal.py   |                                              |
-| AdaBoostReal.R       | AdaBoostReal.py       |                                              |
-| CompareModelStrats.R | CompareModelStrats.py |                                              |
+| R                                            | Python                                         | Notes                                        |
+|----------------------------------------------+------------------------------------------------+----------------------------------------------|
+| [SvmReal.R](SvmReal.R)                       | [SvmReal.py](SvmReal.py)                       |                                              |
+| [bootstrap_examples.R](bootstrap_examples.R) |                                                | mostly taken from package bootstrap examples |
+| [KnnSimBoot.R](KnnSimBoot.R)                 |                                                |                                              |
+| [RandomForestReal.R](RandomForestReal.R)     | [RandomForestReal.py](RandomForestReal.py)     |                                              |
+| [AdaBoostReal.R](AdaBoostReal.R)             | [AdaBoostReal.py](AdaBoostReal.py)             |                                              |
+| [CompareModelStrats.R](CompareModelStrats.R) | [CompareModelStrats.py](CompareModelStrats.py) |                                              |
