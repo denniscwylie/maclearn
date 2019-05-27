@@ -15,7 +15,7 @@ def simulate2Group(n=100, p=1000, n1=None, effect=None):
     x.index = ["i"+str(i) for i in range(n)]
     y.index = x.index
     for i in range(len(effect)):
-        x.ix[y==1, i] = x.ix[y==1, i] + effect[i]
+        x.loc[y==1, x.columns[i]] = x.loc[y==1, x.columns[i]] + effect[i]
     return {"x":x, "y":y}
 
 

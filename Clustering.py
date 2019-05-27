@@ -36,15 +36,19 @@ def kmplot(xy):
         clust = 1 - clust
     isright = np.sign((clust-0.5) * (y-0.5))
     plotdata['group'] = (1-isright) + y
-    ax = plotdata.ix[plotdata["group"]==0].plot.scatter(
-            x="g0", y="g1", color="black")
-    plotdata.ix[plotdata["group"]==1].plot.scatter(
-            x="g0", y="g1", color="goldenrod", ax=ax)
+    ax = plotdata.loc[plotdata["group"] == 0].plot.scatter(
+        x="g0", y="g1", color="black"
+    )
+    plotdata.loc[plotdata["group"] == 1].plot.scatter(
+        x="g0", y="g1", color="goldenrod", ax=ax
+    )
     if len(plotdata["group"].unique()) > 2:
-        plotdata.ix[plotdata["group"]==2].plot.scatter(
-                x="g0", y="g1", color="lightgray", ax=ax)
-        plotdata.ix[plotdata["group"]==3].plot.scatter(
-                x="g0", y="g1", color="red", ax=ax)
+        plotdata.loc[plotdata["group"] == 2].plot.scatter(
+            x="g0", y="g1", color="lightgray", ax=ax
+        )
+        plotdata.loc[plotdata["group"] == 3].plot.scatter(
+            x="g0", y="g1", color="red", ax=ax
+        )
     return(plotdata)
 
 plt.close()
@@ -78,7 +82,7 @@ gdendrout = scipy.cluster.hierarchy.dendrogram(ghcSim,
 ## clustered heatmap
 ## -----------------------------------------------------------------
 heatColors = pd.Series(['#000000']*xsim2.shape[0], index=xsim2.index)
-heatColors.ix[ysim2 == 1] = '#FF0066'
+heatColors.loc[ysim2 == 1] = '#FF0066'
 plt.close()
 sns.clustermap(xsim2.transpose(), method='complete', col_colors=heatColors)
 
@@ -103,7 +107,7 @@ heatX[heatX > maxLogFoldChange] = maxLogFoldChange
 heatX[heatX < -maxLogFoldChange] = -maxLogFoldChange
 
 # heatColors = pd.Series(['#000000']*heatX.shape[1], index=heatX.columns)
-# heatColors.ix[ys['shen'] == 'DBA/2J'] = '#FF0066'
+# heatColors.loc[ys['shen'] == 'DBA/2J'] = '#FF0066'
 # heatColors = pd.DataFrame({'Mouse Strain' : heatColors})
 
 heatColors = pd.Series({
