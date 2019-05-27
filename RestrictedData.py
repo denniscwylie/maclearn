@@ -14,18 +14,18 @@ patelKeepers = ((patelSubtype == 'subtype: Mes') |
                 (patelSubtype == 'subtype: Pro'))
 patelKeepers = annots['patel'].index[patelKeepers]
 
-xs['patel'] = xs['patel'].ix[patelKeepers]
-xnorms['patel'] = xnorms['patel'].ix[patelKeepers]
-annots['patel'] = annots['patel'].ix[patelKeepers]
+xs['patel'] = xs['patel'].loc[patelKeepers]
+xnorms['patel'] = xnorms['patel'].loc[patelKeepers]
+annots['patel'] = annots['patel'].loc[patelKeepers]
 
 
 montastierTime = annots['montastier'].Time
 montastierKeepers = ((montastierTime == 'C1') |
                      (montastierTime == 'C2'))
 
-xs['montastier'] = xs['montastier'].ix[montastierKeepers]
-xnorms['montastier'] = xnorms['montastier'].ix[montastierKeepers]
-annots['montastier'] = annots['montastier'].ix[montastierKeepers]
+xs['montastier'] = xs['montastier'].loc[montastierKeepers]
+xnorms['montastier'] = xnorms['montastier'].loc[montastierKeepers]
+annots['montastier'] = annots['montastier'].loc[montastierKeepers]
 
 
 ## -----------------------------------------------------------------
