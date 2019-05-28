@@ -85,12 +85,12 @@ Python scripts**:
 | [LoadData.R](LoadData.R)           | [LoadData.py](LoadData.py)             |                                     |
 | [NormalizeData.R](NormalizeData.R) | [NormalizedData.py](NormalizedData.py) | RLE- and mean-center-normalization  |
 | [Clustering.R](Clustering.R)       | [Clustering.py](Clustering.py)         | k-means and hierarchical clustering |
-| [PCA_intro.R](PCA_intro.R)         |                                        |                                     |
-| [PCA.R](PCA.R)                     | [PCA.py](PCA.py)                       |                                     |
 
 ### Day 2: knn classification, overfitting, cross-validation, feature selection
 | R                            | Python                         | Notes                                                  |
 |------------------------------|--------------------------------|--------------------------------------------------------|
+| [PCA_intro.R](PCA_intro.R)   |                                |                                                        |
+| [PCA.R](PCA.R)               | [PCA.py](PCA.py)               |                                                        |
 | [KnnSim.R](KnnSim.R)         | [KnnSim.py](KnnSim.py)         | compare resub vs. test performance on simulated data   |
 | [KnnSimCV.R](KnnSimCV.R)     | [KnnSimCV.py](KnnSimCV.py)     | show cross-validation (cv) removes resub bias          |
 | [BadFeatSel.R](BadFeatSel.R) | [BadFeatSel.py](BadFeatSel.py) | supervised feature selection must be done under cv     |
