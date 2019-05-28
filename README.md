@@ -79,14 +79,14 @@ Python scripts**:
 
 ## Scripts to study by day
 
-### Day 1: Loading Data, Normalization, Unsupervised Analysis
+### Day 1: loading data, normalization, clustering
 | R                                  | Python                                 | Notes                               |
 |------------------------------------|----------------------------------------|-------------------------------------|
 | [LoadData.R](LoadData.R)           | [LoadData.py](LoadData.py)             |                                     |
 | [NormalizeData.R](NormalizeData.R) | [NormalizedData.py](NormalizedData.py) | RLE- and mean-center-normalization  |
 | [Clustering.R](Clustering.R)       | [Clustering.py](Clustering.py)         | k-means and hierarchical clustering |
 
-### Day 2: knn classification, overfitting, cross-validation, feature selection
+### Day 2: pca, knn classification, overfitting, cross-validation, feature selection
 | R                            | Python                         | Notes                                                  |
 |------------------------------|--------------------------------|--------------------------------------------------------|
 | [PCA_intro.R](PCA_intro.R)   |                                |                                                        |
