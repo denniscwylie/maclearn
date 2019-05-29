@@ -91,12 +91,12 @@ ggdata = rbind(
     )
 )
 ggdata$k = factor(as.character(ggdata$k),
-        levels=c("k=3", "k=5", "k=10", "k=25"))
+                  levels=c("k=3", "k=5", "k=10", "k=25"))
 
 ggobj = ggplot(
     data = ggdata,
     mapping = aes(x=p, y=Accuracy,
-            color=type, group=type, linetype=type)
+                  color=type, group=type, linetype=type)
 ) + theme_bw()
 ggobj = ggobj + scale_x_log10()
 ggobj = ggobj + geom_point(alpha=0.6)

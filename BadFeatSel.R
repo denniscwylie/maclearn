@@ -18,7 +18,9 @@ y = simData$y
 simSelBad = FastTSelector(nFeat=10)(x, y)
 xbad = simSelBad$transform(x)
 cvbad = train(KnnFitter(k=3), xbad, y,
-        trControl=trainControl(method="cv", number=5))
+              trControl=trainControl(method="cv", number=5))
+cvbad
 
 cvgood = train(fsKnnFitter, x, y,
-        trControl=trainControl(method="cv", number=5))
+               trControl=trainControl(method="cv", number=5))
+cvgood

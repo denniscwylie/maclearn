@@ -59,7 +59,7 @@ modelFits10Accs = sapply(
     FUN = function(u) {sapply(u, function(v) {v$fit$results$Accuracy})}
 )
 write.table(data.frame(M=rownames(modelFits10Accs), modelFits10Accs),
-        file="modelFits10Accs.tsv", sep="\t", row.names=FALSE)
+            file="modelFits10Accs.tsv", sep="\t", row.names=FALSE)
 
 
 ## modelFits20 = lapply(X=xnames, FUN=function(setname) {
@@ -85,5 +85,5 @@ modelFits50Accs = sapply(
     FUN = function(u) {sapply(u, function(v) {v$acc})}
 )
 write.table(data.frame(M=rownames(modelFits50Accs), modelFits50Accs),
-        file="modelFits50Accs.tsv", sep="\t", row.names=FALSE)
+            file="modelFits50Accs.tsv", sep="\t", row.names=FALSE)
 

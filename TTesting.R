@@ -113,7 +113,7 @@ ggdata = do.call(
 )
 ggdata$`|t|` = abs(ggdata$statistic)
 ggdata$set = factor(as.character(ggdata$set),
-        levels=levels(ggdata$set)[order(sapply(xnorms, nrow))])
+                    levels=levels(ggdata$set)[order(sapply(xnorms, nrow))])
 
 ggobj = ggplot(data=ggdata,
         mapping=aes(x=pearson, y=`|t|`, color=set))
@@ -146,8 +146,7 @@ print(ggobj)
 ## -----------------------------------------------------------------
 ## complementary features
 ## -----------------------------------------------------------------
-compResults = gramSchmidtSelect(x=xnorms$patel, y=ys$patel,
-        g="NAMPT")
+compResults = gramSchmidtSelect(x=xnorms$patel, y=ys$patel, g="NAMPT")
 compFeats = names(compResults[
         order(abs(compResults), decreasing=TRUE)])[1:1000]
 compR2 = sapply(compFeats, function(g) {

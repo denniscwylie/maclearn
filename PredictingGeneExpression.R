@@ -11,22 +11,19 @@ source("MaclearnUtilities.R")
 ## load Patel data
 ## -----------------------------------------------------------------
 readTab = function(file) {
-    if (grepl("gz$", file)) {
-        file = gzfile(file)
-    }
     read.table(file, sep="\t",
-            header=TRUE, row.names=1, check.names=FALSE)
+               header=TRUE, row.names=1, check.names=FALSE)
 }
 
-x = data.frame(t(readTab(
-        "rnaseq/GSE57872/GSE57872_DataMatrixMapped.tsv.gz")),
-        check.names=FALSE)
+x = data.frame(
+    t(readTab("rnaseq/GSE57872/GSE57872_DataMatrixMapped.tsv.gz")),
+    check.names = FALSE
+)
 y = x$BRCA1
 names(y) = rownames(x)
 x0 = x[ , colnames(x) != "BRCA1"]
 
-corPVals = apply(x0, 2,
-        function(z) {cor.test(z, y)$p.value})
+corPVals = apply(x0, 2, function(z) {cor.test(z, y)$p.value})
 corQVals = p.adjust(corPVals, method="fdr")
 head(sort(corQVals))
 summary(lm(y ~ x0$CDK1))
@@ -91,7 +88,7 @@ brca1Modelers2 = lapply(X=nFeats, FUN=function(n) {
 
 set.seed(123)
 brca1CV2 = lapply(X=brca1Modelers2,
-        FUN=function(m) {train(m, x0, y)})
+                  FUN=function(m) {train(m, x0, y)})
 
 lambdaMins2 = sapply(brca1CV2, FUN=function(z) {
     z$finalModel[[2]]$fit$lambda.min
@@ -120,7 +117,7 @@ brca1Modelers1 = lapply(X=nFeats, FUN=function(n) {
 
 set.seed(123)
 brca1CV1 = lapply(X=brca1Modelers1,
-        FUN=function(m) {train(m, x0, y)})
+                  FUN=function(m) {train(m, x0, y)})
 
 lambdaMins1 = sapply(brca1CV1, FUN=function(z) {
     z$finalModel[[2]]$fit$lambda.min
@@ -139,7 +136,7 @@ ggdata = rbind(ggdata, data.frame(
 ggobj = ggplot(
     data = ggdata,
     mapping = aes(x=`Number Potential Features`, y=Rsquared,
-            linetype=Regularization)
+                  linetype=Regularization)
 )
 ggobj = ggobj + theme_classic()
 ggobj = ggobj + geom_point() + geom_line(alpha=0.5)

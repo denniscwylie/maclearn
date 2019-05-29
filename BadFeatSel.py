@@ -44,6 +44,7 @@ cvbad = np.mean(model_selection.cross_val_score(
     y = y,
     cv = 5
 ))
+cvbad
 
 cvgood = np.mean(model_selection.cross_val_score(
     estimator = fsKnnFitter,
@@ -51,3 +52,4 @@ cvgood = np.mean(model_selection.cross_val_score(
     y = y,
     cv = 5
 ))
+cvgood

@@ -31,16 +31,14 @@ coef(l1mod)
 ## load Hess data
 ## -----------------------------------------------------------------
 readTab = function(file) {
-    if (grepl("gz$", file)) {
-        file = gzfile(file)
-    }
     read.table(file, sep="\t",
-            header=TRUE, row.names=1, check.names=FALSE)
+               header=TRUE, row.names=1, check.names=FALSE)
 }
 
-x = data.frame(t(readTab(
-        "microarray/Hess/HessTrainingData.tsv.gz")),
-        check.names=FALSE)
+x = data.frame(
+    t(readTab("microarray/Hess/HessTrainingData.tsv.gz")),
+    check.names = FALSE
+)
 annot = readTab("microarray/Hess/HessTrainingAnnotation.tsv")
 y = annot$pCRtxt
 names(y) = rownames(annot)
@@ -120,4 +118,3 @@ cvL2 = train(
     )
 )
 cvL2$results
-

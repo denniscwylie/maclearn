@@ -26,5 +26,5 @@ fsAda100Models = lapply(xnames, fitModelWithNFeat, fitter=AdaFitter(
 fsAda100Accs = sapply(fsAda100Models, function(u) {u$results$Accuracy})
 
 fsAda250Models = lapply(xnames, fitModelWithNFeat,
-        fitter=AdaFitter(iter=250, bag.frac=1), n=10)
+                        fitter=AdaFitter(iter=250, bag.frac=1), n=10)
 fsAda250Accs = sapply(fsAda250Models, function(u) {u$results$Accuracy})
