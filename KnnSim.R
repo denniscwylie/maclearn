@@ -33,35 +33,35 @@ rownames(parGrid) = paste0("p", parGrid$p, "_k", parGrid$k)
 knnSimulate = function(param) {
     param = as.list(param)
     trainSet = simulate2Group(n=param$n, p=param$p,
-            effect=rep(param$effect, param$p))
+                              effect=rep(param$effect, param$p))
     testSet = simulate2Group(n=param$n, p=param$p,
-            effect=rep(param$effect, param$p))
+                             effect=rep(param$effect, param$p))
     out = list(
         p = param$p,
         k = param$k,
         train = trainSet,
         test = testSet,
         resubPreds = knn(trainSet$x, trainSet$x, trainSet$y,
-                k=param$k),
+                         k=param$k),
         resubProbs = knn(trainSet$x, trainSet$x, trainSet$y,
-                k=param$k, prob=TRUE),
+                         k=param$k, prob=TRUE),
         testPreds = knn(trainSet$x, testSet$x, trainSet$y,
-                k=param$k),
+                        k=param$k),
         testProbs = knn(trainSet$x, testSet$x, trainSet$y,
-                k=param$k, prob=TRUE)
+                        k=param$k, prob=TRUE)
     )
     out$resubTable = table(
         Predicted = out$resubPreds,
         Actual = trainSet$y
     )
     out$resubAccuracy = sum(diag(out$resubTable)) /
-            sum(out$resubTable)
+                        sum(out$resubTable)
     out$testTable = table(
         Predicted = out$testPreds,
         Actual = testSet$y
     )
     out$testAccuracy = sum(diag(out$testTable)) /
-            sum(out$testTable)
+                       sum(out$testTable)
     return(out)
 }
 
@@ -100,12 +100,12 @@ ggdata = rbind(
     )
 )
 ggdata$k = factor(as.character(ggdata$k),
-        levels=c("k=3", "k=5", "k=10", "k=25"))
+                  levels = c("k=3", "k=5", "k=10", "k=25"))
 
 ggobj = ggplot(
     data = ggdata,
     mapping = aes(x=p, y=Accuracy,
-            color=type, group=type, linetype=type)
+                  color=type, group=type, linetype=type)
 ) + theme_bw()
 ggobj = ggobj + scale_x_log10()
 ggobj = ggobj + geom_point(alpha=0.6)
@@ -114,4 +114,3 @@ ggobj = ggobj + facet_wrap(~k)
 ## pdf("KnnSim.pdf", h=5, w=5*1.175)
 print(ggobj)
 ## garbage = dev.off()
-

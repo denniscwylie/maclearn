@@ -40,9 +40,8 @@ names(xnames) = xnames
 accPlot = function(accsByNFeats, dataFile, plotFile) {
     ggdata = data.frame(acc=accsByNFeats, row.names=names(accsByNFeats))
     ggdata$set = factor(gsub("\\..*", "",  names(accsByNFeats)),
-            levels=names(xnorms))
+                        levels=names(xnorms))
     ggdata$p = as.integer(gsub(".*\\.", "", names(accsByNFeats)))
-
     write.table(
         ggdata,
         file = dataFile,
@@ -50,7 +49,6 @@ accPlot = function(accsByNFeats, dataFile, plotFile) {
         quote = FALSE,
         row.names = FALSE
     )
-
     ggdata$set = factor(as.character(ggdata$set), levels=names(xnorms))
     ggobj = ggplot(data=ggdata, mapping=aes(x=p, y=acc, color=set))
     ggobj = ggobj + geom_point()
@@ -60,14 +58,11 @@ accPlot = function(accsByNFeats, dataFile, plotFile) {
     ggobj = ggobj + scale_color_manual(
             values=c("darkgray", "black", "red", "dodgerblue3"))
     ggobj = ggobj + ylab("Accuracy (5-fold CV)")
-
     pdf(plotFile, h=5, w=5*1.325)
     print(ggobj)
     garbage = dev.off()
-
     invisible(list(data=ggdata, plot=ggobj))
 }
-
 
 nFeatures = c(2, 5, 10, 20, 50, 100, 200, 500,
         1000, 2000, 5000, 10000)
