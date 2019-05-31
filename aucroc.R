@@ -1,5 +1,6 @@
 library(genefilter)
 library(ggplot2)
+library(pROC)
 
 source('modelpipe.R')
 
@@ -33,6 +34,18 @@ spec = tn / sum(!yis1)
 
 
 ## -----------------------------------------------------------------------------
+aucResult = pROC::auc(as.numeric(yis1), modelResubPreds)
+## Area under the curve: 0.9524
+as.numeric(aucResult)
+## 0.952381
+
+wilcoxResults = wilcox.test(modelResubPreds[yis1], modelResubPreds[!yis1])
+## W = 80, p-value = 0.0006192
+wilcoxResults$statistic / (sum(yis1) * sum(!yis1))
+## 0.952381 
+
+
+## -----------------------------------------------------------------------------
 ggd = data.frame(
     sample = names(sens),
     actual_class = as.numeric(yis1[names(sens)]),
@@ -41,12 +54,17 @@ ggd = data.frame(
     specificity = spec
 )
 ggo = ggplot(ggd, aes(x=1-specificity, y=sensitivity))
-ggo = ggo + geom_line()
+ggo = ggo + geom_line(aes(color=score), size=1, alpha=0.75)
 ggo = ggo + geom_text(aes(label=sample), ggd[ggd$actual_class == 1, ], color='red')
 ggo = ggo + geom_text(aes(label=sample), ggd[ggd$actual_class == 0, ], angle=-90)
-ggo = ggo + geom_hline(aes(yintercept=sensitivity), ggd[ggd$actual_class == 1, ],
-                       alpha=0.2)
-ggo = ggo + geom_vline(aes(xintercept=1-specificity), ggd[ggd$actual_class == 0, ],
-                       alpha=0.2)
+ggo = ggo + geom_hline(aes(yintercept=sensitivity),
+                       data = ggd[ggd$actual_class == 1, ],
+                       alpha=0.35, size=0.25)
+ggo = ggo + geom_vline(aes(xintercept=1-specificity),
+                       data = ggd[ggd$actual_class == 0, ],
+                       alpha=0.35, size=0.25)
 ggo = ggo + theme_classic()
+ggo = ggo + scale_color_gradientn(colors=c('orangered', 'goldenrod', 'seagreen',
+                                           'dodgerblue', '#606060'))
 print(ggo)
+ 
