@@ -9,12 +9,12 @@ load("prepared_datasets.RData")
 x = xnorms$hess
 y = structure(ys$hess, names=rownames(x))
 
-fsKnnFitter = SolderedPipeFitter(
+fsLogisticFitter = SolderedPipeFitter(
     FastTSelector(nFeat = 5),
     GlmFitter()
 )
 
-fitModel = fsKnnFitter(x, y)
+fitModel = fsLogisticFitter(x, y)
 
 
 ## -----------------------------------------------------------------------------

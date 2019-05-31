@@ -84,7 +84,7 @@ for s in xnorms:
     modelFits10[s] = {f : fitModelWithNFeat(fitters[f],
                                             n = 10,
                                             setname = s)
-                           for f in fitters}
+                      for f in fitters}
 
 modelFits10 = DataFrame(modelFits10)
 
@@ -94,7 +94,7 @@ for s in xnorms:
     modelFits20[s] = {f : fitModelWithNFeat(fitters[f],
                                            n = 20,
                                            setname = s)
-                           for f in fitters}
+                      for f in fitters}
 
 modelFits20 = DataFrame(modelFits20)
 
@@ -104,6 +104,6 @@ for s in xnorms:
     modelFits50[s] = {f : fitModelWithNFeat(fitters[f],
                                             n = 50,
                                             setname = s)
-                           for f in fitters}
+                      for f in fitters}
 
 modelFits50 = DataFrame(modelFits50)
