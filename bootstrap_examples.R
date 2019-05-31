@@ -1,7 +1,5 @@
 library(bootstrap)
 
-qprobs = c(0, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 1)
-
 
 ## -----------------------------------------------------------------
 ## examples from function bootstrap:
@@ -13,7 +11,6 @@ x <- rnorm(20)
 theta <- function(x) {mean(x)}
 results <- bootstrap(x, 100, theta)
 
-t(t(quantile(results$thetastar, probs=qprobs)))
 sd(results$thetastar)
 1 / sqrt(20)
 
@@ -24,12 +21,10 @@ sd(results$thetastar)
 perc95 <- function(x) {quantile(x, .95)}
 results <-  bootstrap(x, 100, theta, func=perc95)
 
-t(t(quantile(results$thetastar, probs=qprobs)))
-
 results$func.thetastar
-t(t(quantile(results$thetastar, probs=0.95)))
 
-t(t(quantile(results$jack.boot.val, probs=qprobs)))
+sd(results$jack.boot.val) * (length(x)-1) / sqrt(length(x))
+results$jack.boot.se
 
 
 # To bootstrap functions of more complex data structures,
@@ -42,8 +37,6 @@ xdata <- matrix(rnorm(30), ncol=2)
 n <- 15
 theta <- function(x, xdata) { cor(xdata[x, 1], xdata[x, 2]) }
 results <- bootstrap(1:n, 20, theta, xdata)
-
-t(t(quantile(results$thetastar, probs=qprobs)))
 
 
 ## -----------------------------------------------------------------
