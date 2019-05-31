@@ -15,7 +15,7 @@ results <- bootstrap(x, 100, theta)
 
 t(t(quantile(results$thetastar, probs=qprobs)))
 sd(results$thetastar)
-1 / sqrt(20-1)
+1 / sqrt(20)
 
 
 # as above, but also estimate the 95th percentile
