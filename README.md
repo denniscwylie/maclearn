@@ -11,20 +11,40 @@ problems). Participants have the opportunity to apply these methods as
 implemented in R and python to publicly available data.
 
 ## Course materials
-Lecture notes are provided in three different formats:
+
+Lecture notes are provided in three different formats.
+
+I'd recommend following along using either the R- or Python-versions
+of the **Jupyter notebooks**: to do this, you should download the
+entire repository into a directory on your personal computer---you
+will need the data files in the data directory as well as the
+accessory script files included in the repository in order to run the
+code in the notebooks. (This also means that all of the script files
+and notebooks should be housed in the same directory, together with
+the data directory; this should already be in the correct structure
+if you clone it directly from github).
 
 ### pdf document (R version)
-- [maclearn-2020.pdf](maclear-2020.pdf)
 
-### jupyter notebook (R version)
+- [maclearn-2020.pdf](maclearn-2020.pdf)
+
+### Jupyter notebook (R version)
+
+For a tutorial in how to use Jupyter notebooks with R, see:
+https://www.datacamp.com/community/blog/jupyter-notebook-r
+
 - [1-algorithms-that-learn-R.ipynb](1-algorithms-that-learn-R.ipynb)
-- [2-unsupervised-R.ipynb](2-unsupervised-R.ipynb]
+- [2-unsupervised-R.ipynb](2-unsupervised-R.ipynb)
 - [3-knn-and-cross-validation-R.ipynb](3-knn-and-cross-validation-R.ipynb)
 - [4-feature-selection-extraction-R.ipynb](4-feature-selection-extraction-R.ipynb)
 - [5-regression-models-R.ipynb](5-regression-models-R.ipynb)
 - [6-svm-bootstrap-random-forests-auc-R.ipynb](6-svm-bootstrap-random-forests-auc-R.ipynb)
 
-### jupyter notebook (python version)
+### Jupyter notebook (python version)
+
+For a tutorial in how to use Jupyter notebooks with Python, see:
+https://www.datacamp.com/community/tutorials/tutorial-jupyter-notebook
+
 - [1-algorithms-that-learn-Python.ipynb](1-algorithms-that-learn-Python.ipynb)
 - [2-unsupervised-Python.ipynb](2-unsupervised-Python.ipynb]
 - [3-knn-and-cross-validation-Python.ipynb](3-knn-and-cross-validation-Python.ipynb)
@@ -33,10 +53,17 @@ Lecture notes are provided in three different formats:
 - [6-svm-bootstrap-random-forests-auc-Python.ipynb](6-svm-bootstrap-random-forests-auc-Python.ipynb)
 
 ### data
+
 The directories **data** contains two example data sets (described in
 the lecture notes). The remaining files in the repository are small R
 or python scripts either `source`d (R) or `import`ed (Python) at
 various points in the jupyter notebooks.
+
+Please note that you do not need to (and should not) unzip any of the
+gzipped files (which can be identified by the extension ".gz" at the
+end of the file name)! They can be loaded into R or Python directly
+as is and the notebooks are configured to access them using the gzipped
+forms.
 
 ## Suggested prerequisites
 
