@@ -46,7 +46,7 @@ For a tutorial in how to use Jupyter notebooks with Python, see:
 https://www.datacamp.com/community/tutorials/tutorial-jupyter-notebook
 
 - [1-algorithms-that-learn-Python.ipynb](1-algorithms-that-learn-Python.ipynb)
-- [2-unsupervised-Python.ipynb](2-unsupervised-Python.ipynb]
+- [2-unsupervised-Python.ipynb](2-unsupervised-Python.ipynb)
 - [3-knn-and-cross-validation-Python.ipynb](3-knn-and-cross-validation-Python.ipynb)
 - [4-feature-selection-extraction-Python.ipynb](4-feature-selection-extraction-Python.ipynb)
 - [5-regression-models-Python.ipynb](5-regression-models-Python.ipynb)
