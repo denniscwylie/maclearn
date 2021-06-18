@@ -105,7 +105,7 @@ The following Python modules are used in the included scripts; again I
 would **recommend installing prior to class if you intend to run the
 Python scripts**:
 - matplotlib
-- mlextend
+- mlxtend
 - numpy
 - pandas
 - plotnine
