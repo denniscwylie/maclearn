@@ -1,0 +1,701 @@
+---
+title: An R Markdown document converted from "3-knn-and-cross-validation-R.ipynb"
+output: html_document
+---
+
+Hess Data Set 
+=============
+
+The Hess data set I initially mentioned in the introductory notes
+consists of microarray data taken from fine-needle biopsies taken from
+breast cancer patients. A number of patient characteristics were
+collected, but the main focus of the modeling that we will be
+doing---like the modeling that Hess et al. were doing!
+([@hess2006pharmacogenomic])---will be the sensivity to
+preoperative chemotherapy, with the patients divided into those who
+exhibited residual disease (RD) or those who did not and were thus
+classified as have pathologic complete response (pCR) to chemotherapy.
+In order to load the Hess data in, let's re-define the function `rt`
+we used to load the Neves data in before:
+
+```{r}
+ ## define convenience function for loading tabular data
+ ## (just using read.table with different default options)
+rt = function(f) {
+    read.table(f, sep="\t", row.names=1, header=TRUE,
+               check.names=FALSE, comment.char="", quote="")
+}
+```
+
+Hess et al. obtained two separate data sets, a training set which they
+used to develop a classifier for RD-vs-pCR, and a test set which they
+used to assess the performance of the resulting classifier. Let's load
+in the training data first:
+
+```{r}
+ ## training set:
+hessTrain = rt("../data/HessTrainingData.tsv.gz")
+hessTrainAnnot = rt("../data/HessTrainingAnnotation.tsv")
+ ## align annotation data.frame with expression data:
+hessTrainAnnot = hessTrainAnnot[colnames(hessTrain), ]
+```
+
+And now the test data:
+
+```{r}
+ ## test set:
+hessTest = rt("../data/HessTestData.tsv.gz")
+hessTestAnnot = rt("../data/HessTestAnnotation.tsv")
+ ## align annotation data.frame with expression data:
+hessTestAnnot = hessTestAnnot[colnames(hessTest), ]
+```
+
+Taking a quick look at the training data:
+
+```{r}
+hessTrain[1:5, 1:5]
+```
+
+we see that the rows here are not annotated by gene ids but instead by
+*probe set* ids. We'll load in the microarray probe annotations
+mapping these probe sets back to genes as well:
+
+```{r}
+probeAnnot = rt("../data/U133A.tsv.gz")
+ ## align hessTrain and hessTest to probeAnnot:
+hessTrain = hessTrain[rownames(probeAnnot), ]
+hessTest = hessTest[rownames(probeAnnot), ]
+```
+
+For ease of classification, we'd like to extract the class labels from
+columns of the sample annotation files into `factor` variables:
+
+```{r}
+hessTrainY = factor(hessTrainAnnot$pCRtxt)
+names(hessTrainY) = rownames(hessTrainAnnot)
+hessTestY = factor(hessTestAnnot$pCRtxt)
+names(hessTestY) = rownames(hessTestAnnot)
+```
+
+Finally, let's take a quick look at the test and training set data put
+together via a PCA plot:
+
+```{r}
+ ## use cbind to column-bind the training and test data sets together:
+combinedData = cbind(hessTrain, hessTest)
+pca = prcomp(t(combinedData))
+library(ggplot2)
+theme_set(theme_bw())  ## get rid of gray backgrounds in ggplot
+ggdata = data.frame(
+    PC1 = pca$x[ , 1],
+    PC2 = pca$x[ , 2],
+    set = c(rep("train", ncol(hessTrain)), rep("test", ncol(hessTest)))
+)
+gg = ggplot(ggdata, aes(x=PC1, y=PC2, color=set))
+gg = gg + geom_point(size=2)
+print(gg)
+```
+
+This shows an uncomfortable fact about real-world applications of
+machine learning: when training and test sets are collected
+separately, there tend to be systematic differences between them. This
+can result in degraded test-set performance even when models have been
+carefully constructed using the most effective algorithms available!
+
+$k$-Nearest Neighbors (knn) 
+=========================================
+
+The $k$-neighest neighbors, or knn, algorithm
+([@cover1968estimation]) is a particularly simple and democratic
+approach to classification:
+To classify sampling unit $i$ with feature values $x_ig$:
+-   find the $k$ sampling units $\{j_1, j_2, \ldots, j_k\}$ from the
+    training set *most similar* to $i$: these are the "nearest
+    neighbors"
+-   calculate the fraction $\frac{\sum_b y_{j_b}}{k}$ of the nearest
+    neighbors which have $y_{j_{b}} = 1$: this is the knn model-predicted
+	probability that $y_i = 1$.
+
+```{r}
+ ## extract vector of gene expression values for test sample 1:
+featuresForTestSample1 = hessTest[ , 1]
+ ## calculate distance of each training sample from test sample 1:
+ ## note: subtraction of vector from matrix is column-wise in R!
+euclideanDistancesFromTrainSamples = sqrt(
+    colSums( (hessTrain - featuresForTestSample1)^2 )
+)
+ ## what are the 9 nearest neighbors
+ ## and their distances from test sample 1?
+nn = sort(euclideanDistancesFromTrainSamples)[1:9]
+nn
+```
+
+```{r}
+ ## what are their classifications?
+hessTrainY[names(nn)]
+```
+
+```{r}
+ ## 9-nn model predicted probability of RD for test sample 1 is:
+sum( hessTrainY[names(nn)] == "RD" ) / 9
+```
+
+Here I should hasten to point out that all of the ML algorithms we
+will study here have been been packaged up into more efficient and
+user-friendly R routines, so there is really no need to go through the
+pain of re-implementing them from scratch! (I just wanted to give you
+a sense of how simple knn in particular is "under the hood.")
+
+Here is the way I would actually suggest to apply the knn algorithm in
+R (using the `knn3` function from the library `caret`):
+
+```{r}
+## install.packages("caret")  ## uncomment and run if necessary
+library(caret)
+ ## fit model object obtained by running:
+knnFit = knn3(x = t(hessTrain),   ## knn3 wants features-in-columns
+              y = hessTrainY,     ## recall hessTrainY is factor!
+              k = 9)
+ ## can then generate test set predictions using knnFit:
+knnTestPredictionProbs = predict(knnFit, t(hessTest))
+ ## good to inspect results of predict method in R
+ ## (output from predict not standardized from one alg to next):
+head(knnTestPredictionProbs)
+```
+
+```{r}
+ ## what is predicted probability RD for test sample 1 again?
+knnTestPredictionProbs[1, "RD"]
+```
+
+For some R modeling functions---including `knn3`---can use `type`
+argument to specify what format you want predictions in:
+
+```{r}
+knnTestPredictionClass = predict(knnFit, t(hessTest), type="class")
+head(knnTestPredictionClass)
+```
+
+```{r}
+ ## use table function to generate 2x2 contingency table:
+contingency = table(knnTestPredictionClass, hessTestY)
+contingency
+```
+
+The 2x2 contingency table is a very useful and commonly presented
+summary of binary classification results. If one class is regarded as
+"positive" and one as "negative," the various cells of the 2x2
+table can be labeled:
+
+| .               | Actual (-)             | Actual (+)            |
+|-----------------|------------------------|-----------------------|
+| Predicted (-)   | True Negatives (TN)    | False Negatives (FN)  |
+| Predicted (+)   | False Positives (FP)   | True Positives (TP)   |
+
+Notice that:
+-   the diagonal elements of the contingency table correspond to
+    accurate classifications, and that
+-   every (classifiable) sampling unit will fall into one of the
+    four cells.
+
+Thus we can calculate the fraction of sampling units classified
+correctly---referred to in ML contexts as the *accuracy* of the
+model fit---by dividing the sum of the diagonals of the contingency
+table by the sum of all four entries in the contingency table:
+
+```{r}
+estimatedAccuracy = sum(diag(contingency)) / sum(contingency)
+estimatedAccuracy
+```
+
+Overfitting 
+===========
+
+Let's use the data for two specific microarray probes,
+205548_s_at and 201976_s_at to fit a knn model with $k=27$:
+
+```{r}
+ ## we'll go ahead and transpose the data.frame to have
+ ## features-in-columns for convenience:
+twoProbeData = t(hessTrain)[ , c("205548_s_at", "201976_s_at")]
+ ## let's use friendlier gene names instead of probe ids here:
+colnames(twoProbeData) =
+        probeAnnot[colnames(twoProbeData), "Gene.Symbol"]
+twoProbeFitK27 = knn3(twoProbeData, hessTrainY, k=27)
+```
+
+I'm using two probes because I want to be able to make a contour plot
+of the *decision boundary* of the knn classifier. I'm going to
+use a function saved in the file `ggfuntile.R` to do this:
+
+```{r}
+source("../ggfuntile.R")  ## defines predictionContour function
+predictionContour(twoProbeFitK27, twoProbeData, hessTrainY, "k = 27")
+```
+
+Looking at this decision boundary you might think this classifier
+looks too conservative about calling pCR: Surely we could push that
+boundary to the left a bit to catch a few more of those open
+downward-pointing triangles? Thinking about this a bit more, it seems
+that perhaps our choice of parameter $k=27$ is a bit high; after all,
+27 is almost a third of all 82 samples in the
+Hess training set. The appropriate neighborhood for points in the
+upper right hand corner of the contour plot may be better estimated
+with a more local knn model defined by, say, $k=9$:
+
+```{r}
+twoProbeFitK9 = knn3(twoProbeData, hessTrainY, k=9)
+predictionContour(twoProbeFitK9, twoProbeData, hessTrainY, "k = 9")
+```
+
+That does look somewhat better! Many more pCR samples correctly called
+at the cost of only one extra misclassified RD sample. But perhaps we
+could do better still with an even more local model---let's try $k=3$:
+
+```{r}
+twoProbeFitK3 = knn3(twoProbeData, hessTrainY, k=3)
+predictionContour(twoProbeFitK3, twoProbeData, hessTrainY, "k = 3")
+```
+
+Hmmm\...this does appear to catch a few more pCR samples from the
+training set, but we seem to have generated some swiss cheese-like
+holes in the RD predicted region, along with a very convoluted bay
+and peninsula in the center right portion of the main decision
+boundary. Still, this seems like a very subjective complaint---let's
+look at some accuracy estimates:
+
+```{r}
+ ## define pair of convenience functions to minimize repeated code:
+contingencize = function(knnFit, data, y) {
+    table(predict(knnFit, data, type="class"), y)
+}
+estimateAccuracyFrom2x2 = function(twoByTwo) {
+    sum(diag(twoByTwo)) / sum(twoByTwo)
+}
+twoByTwo27 = contingencize(twoProbeFitK27, twoProbeData, hessTrainY)
+estimateAccuracyFrom2x2(twoByTwo27)
+```
+
+```{r}
+twoByTwo9 = contingencize(twoProbeFitK9, twoProbeData, hessTrainY)
+estimateAccuracyFrom2x2(twoByTwo9)
+```
+
+```{r}
+twoByTwo3 = contingencize(twoProbeFitK3, twoProbeData, hessTrainY)
+estimateAccuracyFrom2x2(twoByTwo3)
+```
+
+So does this really mean the swiss-cheese decision region is the
+best\...?
+
+Of course not! All of the accuracy estimates we just made suffer from
+what's called *resubstitution bias* because we tested the model
+on the same data set that was used to train it. Let's clean that up:
+
+```{r}
+ ## extract test data for our two favorite probes\...
+twoProbeTest = t(hessTest)[ , c("205548_s_at", "201976_s_at")]
+colnames(twoProbeTest) =
+        probeAnnot[colnames(twoProbeTest), "Gene.Symbol"]
+ ## now let's take another stab at accuracy estimations:
+twoByTwo27 = contingencize(twoProbeFitK27, twoProbeTest, hessTestY)
+estimateAccuracyFrom2x2(twoByTwo27)
+```
+
+```{r}
+twoByTwo9 = contingencize(twoProbeFitK9, twoProbeTest, hessTestY)
+estimateAccuracyFrom2x2(twoByTwo9)
+```
+
+```{r}
+twoByTwo3 = contingencize(twoProbeFitK3, twoProbeTest, hessTestY)
+estimateAccuracyFrom2x2(twoByTwo3)
+```
+
+While we may be a bit disappointed to see that the best accuracy
+estimate from the test set is worse than the worst accuracy estimate
+from resubstitution of the training set, we can find solace in noting
+that the $k=3$ model with it's bizarre decision boundary is no longer
+judged the best.
+
+This is the classic problem of *overfitting*: Models with more
+freedom to fit very complex patterns in the training data set---such
+as our very local low-$k$ knn model---have a tendency to find
+"signals" which are not reproducible in independent data sets, even
+those of a very similar nature.
+
+Here's an example where you can see the overfitting coming without any
+computation at all: What do you think the resubstitution accuracy of a
+1-nearest neighbor model would be? As a hint, you might think about what
+the nearest neighbor of training sample $i$ is in the training set\...
+
+knn Simulation 
+==============
+
+At this point I will digress away from analysis of the Hess microarray
+data for a bit to consider simulated data sets. Simulated data can be
+useful because:
+1.  we know the true model used to generate the data exactly, and
+2.  we can systematically vary any parameters that appear in the
+    data generation model so as to study how well our ML algorithms work
+    in a range of situations.
+Let's define a function `simulate2group` for simulating
+-   a simple data set with `n` sampling units (or simulated samples)
+    and `m` features (simulated genes, if you like),
+-   with the sampling units divided into two groups A and B,
+-   and `mEffected` $\leq$ `m` of the features being shifted by
+    `effectSize` units on average in group B relative to group A:
+
+```{r}
+simulate2group = function(n = 100,   ## number simulated samples
+                          m = 1000,  ## number simulated genes
+                          nA = ceiling(0.5*n),  ## first nA samples = group A
+                                                ## last (n-nA) samples = group B
+                          mEffected = 10,   ## first mEffected genes will have
+                                            ## different expression in group B
+                          effectSize = 1 ## how many expression units difference
+                                         ## between groups for mEffected genes
+                          ) {
+    x = matrix(rnorm(n*m), nrow=n, ncol=m)  ## simulate iid expression values
+                                            ## (highly unrealistic, but easy)
+    y = factor(c(rep("A", nA), rep("B", (n-nA))))
+    colnames(x) = paste0("g", 1:m)   ## gene labels like g1, g2, etc.
+    rownames(x) = paste0("i", 1:n)   ## sample labels like i1, i2, etc.
+    names(y) = rownames(x)   ## assign sample labels as names of grouping vector
+    x[y=="B", 1:mEffected] = x[y=="B", 1:mEffected] + effectSize
+    return(list(x=data.frame(x), y=y))
+}
+```
+
+Because of the second advantage associated with simulated data
+above---the ability to repeat the analysis while varying simulation
+parameters---I'm going to package our data generation, model fitting,
+and model assessment procedure up into a function of those simulation
+parameters:
+
+```{r}
+simulateAndKnnModel = function(n, m, k, mEffected, effectSize,
+                               rep=1, ...) {
+    require(caret)
+    trainSet = simulate2group(n = n,
+                              m = m,
+                              mEffected = mEffected,
+                              effectSize = effectSize)
+    testSet = simulate2group(n = n,
+                             m = m,
+                             mEffected = mEffected,
+                             effectSize = effectSize)
+    knnFit = knn3(trainSet$x, trainSet$y, k)
+    resubstitutionPredictions = predict(knnFit, trainSet$x, type="class")
+     ## construct contingency table and use to estimate accuracy:
+    resub2by2 = table(resubstitutionPredictions, trainSet$y)
+    resubAccuracyEst = sum(diag(resub2by2)) / sum(resub2by2)
+     ## do same thing for testPredictions:
+    testPredictions = predict(knnFit, testSet$x, type="class")
+    test2by2 = table(testPredictions, testSet$y)
+    testAccuracyEst = sum(diag(test2by2)) / sum(test2by2)
+     ## return vector of results along with simulation parameters:
+    return(c(m = m,
+             k = k,
+             rep = rep,  ## rep included to track repetition index
+             resubstitution = resubAccuracyEst,
+             test = testAccuracyEst))
+}
+```
+
+Here's an example using this function to assess the performance of a
+5-nearest neighbors model (`k=5`) on a simulated data set of
+`n=100` sampling units with `m=10` features, of which
+`mEffected=1` feature has values elevated by `effectSize=2.5`
+units in group B relative to group A (we'll rely on the
+`simulate2group` default value of `nA=ceiling(0.5*n)=50` to
+specify that half of the sampling units are in group A and the other
+half in group B):
+
+```{r}
+simulateAndKnnModel(n=100, m=10, k=5, mEffected=1, effectSize=2.5)
+```
+
+The function reports out some of the simulation parameters along with
+the estimated accuracy results so that we can keep track of what
+parameters went into eah simulation when we repeat this procedure many
+times. We're going to do this by setting up a `data.frame` with one
+row per simulation and columns specifying the parameters to use:
+
+```{r}
+ ## expand.grid generates data.frame with all combinations of
+ ## supplied arguments
+simulationParameterGrid = expand.grid(
+    n = 100,                ## all simulations have n=100
+    m = c(2, 5, 10, 25, 50, 100, 250),
+    k = c(3, 5, 11, 25),
+    rep = 1:10              ## repeat each combination ten times
+)
+ ## we'll say all features are different between group A and B:
+simulationParameterGrid$mEffected = simulationParameterGrid$m
+ ## but with an effect size shrinking with mEffected:
+simulationParameterGrid$effectSize =
+        2.5 / sqrt(simulationParameterGrid$mEffected)
+head(simulationParameterGrid)
+```
+
+```{r}
+nrow(simulationParameterGrid)  ## length(m) * length(k) * 10 repeats
+```
+
+Now that we have our desired simulation parameters nicely organized,
+we could blast through all of them using a `for`-loop, but one of
+the advantages of having our simulation and modeling procedure coded
+up as a function is that it allows us to adopt a slightly more elegant
+approach using the `apply` function:
+
+```{r}
+ ## simulate and model one data set per row of simulationParameterGrid
+ ## use base-R apply function to do this
+modelingResults = apply(
+    X = simulationParameterGrid,
+    MARGIN = 1,  ## iterate over rows (first margin) of X argument
+    FUN = function(dfrow) {
+         ## dfrow has all of the arguments for simulateAndKnnModel,
+         ## but they are packed into single vector;
+         ## do.call enables function call to unpack a (named) list
+         ## into separate (named) arguments:
+        do.call(simulateAndKnnModel, args=as.list(dfrow))
+    }
+)
+dim(modelingResults)  ## apply here produces matrix with 1 column
+```
+
+```{r}
+                      ## per iteration, so let's transpose:
+modelingResults = t(modelingResults)
+head(modelingResults)
+```
+
+It's easier to absorb large quantities of quantitative information
+visually, so let's repackage and plot these results using `tidyr`
+and `ggplot2`:
+
+```{r}
+## install.packages("tidyr")  ## uncomment and run if necessary
+library(tidyr)
+ggdata = data.frame(modelingResults) %>%
+    pivot_longer(resubstitution:test,
+                 names_to = "method",
+                 values_to = "estimated accuracy")
+ggdata$k = factor(
+    paste0("k=", ggdata$k),
+    levels = unique(paste0("k=", ggdata$k))
+)
+head(ggdata)
+```
+
+```{r}
+gg = ggplot(ggdata, aes(x=m, y=`estimated accuracy`, color=method))
+gg = gg + facet_wrap(~k)
+gg = gg + stat_smooth(method.args=list(degree=1))
+gg = gg + geom_point(alpha=0.6)
+gg = gg + scale_x_log10()
+print(gg)
+```
+
+This figure illustrates the degree to which the more flexible (low
+$k$) knn models overfit relative to the less flexible (high $k$)
+models: the resubstitution accuracy estimate curves lie considerably
+above the test accuracy estimate curves for `k=3`, with the
+difference between the two curves shrinking considerably as $k$ rises
+upwards towards `k=25`.
+
+Cross-Validation 
+================
+
+When data are scarce, we'd like to be able to both
+1.  build a classifier using a large fraction---close to 100% if
+    possible---of the available sampling units, while
+2.  assessing classifier performance without suffering
+    resubstitution bias.
+
+We know how to handle 2: split the data into training and test sets,
+using only training set to build the classifier and only test set for
+evaluation of performance. Unfortunately this isn't so great for 1!
+
+One thing we could do with our data split, however, is to swap which
+set is used to train and which is used to test. This doesn't
+immediately address point 1 above, but it does at least allow us to
+use all of our data to test performance.
+
+But we can do better! Why not split our data into three subsets A, B,
+and C: we can train on (A+B) and test on C, then train on (A+C) and
+test on B, and finally train on (B+C) and test on A. Now we're making
+some progress on point 1 above as well as point 2: our training sets
+are $\frac{2}{3}$ of our full data set and we end up using 100% of
+the data for testing!
+
+This is the key idea of *cross-validation*
+([@stone1974cross]), which takes it further to allow for 4-fold,
+5-fold, 6-fold, \..., $n$-fold splits of our data set in addition to
+the 3-fold split just described. The general idea is to fit a model on
+the data from all but one of the subsets and test on the one held-out
+subset, repeating this process so that every subset is held-out once.
+
+Performance is generally estimated using this procedure by
+-   computing accuracy (or whatever other metric one might prefer)
+    separately on each held-out data subset
+    -   *using the model fit to the the data from all other
+        subsets* so that
+    -   in no case is a sampling unit $i$ tested using a fit model for
+        which $i$ was part of the training set,
+    
+-   and then averaging the accuracy estimates from each fold together.
+
+We could code this up from scratch, but it's easier (and less
+bug-prone) to use the `train` function provided by the `caret`
+library:
+
+```{r}
+simData = simulate2group(n=100, m=10, mEffected=1, effectSize=2.5)
+ ## recall simData is named list with data.frame simData$x
+ ## and grouping factor simData$y
+cvFolds = 5
+caretOut = train(simData$x, simData$y, method="knn",
+                 trControl=trainControl(method="cv", number=cvFolds))
+caretOut
+```
+
+Notice that all we told `train` about our modeling strategy (ML
+algorithm) was the string `"knn"`; this works because `train`
+happens to know about knn. Since we didn't tell it anything about
+details like what $k$ value to use, `train` went ahead and picked
+its own values to try, selecting the one that produced the best
+cross-validation-estimated accuracy value.
+While it was convenient to just tell `train` to use
+`method="knn"`, we can get a lot more control over exactly what
+algorithms are `train`ed by putting together a named `list` of the
+components `train` needs in a `method` argument like so:
+
+```{r}
+knnCaretized = list(
+     ## knn3 is in caret library, don't need any others:
+    library = NULL,
+     ## caret works with both Classification and Regression,
+     ## need to tell it we want to do Classification:
+    type = "Classification",
+     ## tell caret what parameters exist in this model:
+    parameters = data.frame(parameter="k", class="integer", label="n_nbrs"),
+     ## and also what value(s) of those parameters to try:
+    grid = function(x, y, len=NULL, ...) {data.frame(k=9)},
+     ## provide caret a function to generate a fit model:
+     ## (args x, y, param, and \...; all parameters go in list param):
+    fit = function(x, y, param, ...) {knn3(x, y, param$k)},
+     ## also provide a function to predict classifications using fit
+     ## (important that argument names be modelFit, newdata, and ...):
+    predict = function(modelFit, newdata, ...) {
+        predict(modelFit, newdata, type="class")
+    },
+     ## and finally a function to make probabilistic predictions:
+    prob = function(modelFit, newdata, ...) {predict(modelFit, newdata)}
+)
+caretOut = train(simData$x, simData$y, method=knnCaretized,
+                 trControl=trainControl(method="cv", number=cvFolds))
+caretOut
+```
+
+While this is a lot more work on our end, I'm going to use this way of
+providing `method` arguments to `train` from now on, both because
+for some of the more complicated modeling strategies we'll consider
+it's the only way to get `train` to run them and because `train`
+tends to run faster when you tell it exactly what to do. While
+`caret` offers many useful features, it has a deserved reputation
+for tying up your computational resources for a while!
+
+Now I'm going to repeat the same many-different-simulations excercise
+I did above comparing resubstitution and test set accuracy estimates,
+only replace resubstitution with cross-validation using
+`train`. First I'll set up a function to facilitate this repetition:
+
+```{r}
+simulateAndCrossValidateKnnModel =
+        function(n, m, k, mEffected, effectSize, rep, cvFolds, ...) {
+    require(caret)
+    trainSet = simulate2group(n=n, m=m,
+                              mEffected=mEffected, effectSize=effectSize)
+    testSet = simulate2group(n=n, m=m,
+                             mEffected=mEffected, effectSize=effectSize)
+    knnCaretized = list(
+        library = NULL,
+        type = "Classification",
+        parameters = data.frame(parameter="k", class="integer", label="n_nbrs"),
+        grid = function(x, y, len=NULL, ...) {data.frame(k=k)},
+        fit = function(x, y, param, ...) {knn3(x, y, param$k)},
+        predict = function(modelFit, newdata, ...) {
+            predict(modelFit, newdata, type="class")
+        },
+        prob = function(modelFit, newdata, ...) {predict(modelFit, newdata)}
+    )
+    caretOut = train(x = trainSet$x,
+                     y = trainSet$y,
+                     method = knnCaretized,
+                     trControl = trainControl(method="cv", number=cvFolds))
+    cvAccuracyEst = caretOut$results$Accuracy
+    testPredictions = predict(caretOut$finalModel, testSet$x, type="class")
+    test2by2 = table(testPredictions, testSet$y)
+    testAccuracyEst = sum(diag(test2by2)) / sum(test2by2)
+    return(c(m = m,
+             k = k,
+             rep = rep,
+             cv = cvAccuracyEst,
+             test = testAccuracyEst))
+}
+```
+
+Now, on to `apply`ing this function to the
+`simulationParameterGrid` (we'll re-use the same one from before)
+
+```{r}
+ ## add a column to simulationParameterGrid with number of cvFolds:
+simulationParameterGrid$cvFolds = 5
+ ## and now we're ready to go!
+cvModelingResults = t(apply(
+    X = simulationParameterGrid,
+    MARGIN = 1,
+    FUN = function(dfrow) {
+        do.call(simulateAndCrossValidateKnnModel, args=as.list(dfrow))
+    }
+))
+head(cvModelingResults)
+```
+
+We can use pretty much the same plotting code from before with only
+the slightest of modifications:
+
+```{r}
+ggdata = data.frame(cvModelingResults) %>%
+    pivot_longer(cv:test,
+                 names_to = "method",
+                 values_to = "estimated accuracy")
+ggdata$k = factor(
+    paste0("k=", ggdata$k),
+    levels = unique(paste0("k=", ggdata$k))
+)
+gg = ggplot(ggdata, aes(x=m, y=`estimated accuracy`, color=method))
+gg = gg + facet_wrap(~k)
+gg = gg + stat_smooth(method.args=list(degree=1))
+gg = gg + geom_point(alpha=0.6)
+gg = gg + scale_x_log10()
+print(gg)
+```
+
+Cross-validation works! The cross-validated accuracies are pretty much in line with the test accuracies.
+
+There is actually a slight *downward* bias in the accuracy
+estimates produced by cross-validation resulting from the fact that
+our training sets using 5-fold cross-validation are only 80% the size
+of the full data set available for training when use the independent
+test set. Lest you think that this suggests we should always use the
+largest possible number of cross-validation (CV) folds---that is,
+$n$---you should know that while increasing the number of CV folds
+decreases the negative bias in accuracy estimation, it also increases
+the imprecision (variance) in accuracy estimation. As a rule of thumb,
+you might consider 5- or 10-fold CV as good default `cvFolds` values.
+

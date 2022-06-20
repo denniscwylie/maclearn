@@ -1,0 +1,441 @@
+---
+title: An R Markdown document converted from "4-feature-selection-extraction-R.ipynb"
+output: html_document
+---
+
+Feature Selection 
+=================
+
+```{r}
+library(ggplot2)
+theme_set(theme_bw())
+source("load_hess.R")
+```
+
+It is often assumed that in any one particular problem the expression
+patterns of most genes---or, more generally, the values of most
+features in a high-dimensional data set---are either:
+-   uninformative or
+-   redundant with a few maximally useful markers.
+
+*Feature selection* attempts to identify a restricted set of such
+useful features for inclusion in a classification model while
+discarding the rest.
+
+While feature selection may or may not improve the performance of a
+particular classifier applied to a particular problem, it can
+1.  reduce computational workload,
+2.  help to avoid overfitting
+    -   (though feature selection can itself be susceptible to
+        overfitting!), and
+    
+3.  facilitate assessment of model using less high-throughput
+    platforms.
+
+A good, if somewhat dated, reference on the use of feature selection
+methods in bioinformatics is [@saeys2007review], which breaks down
+feature selection methods into the following three categories:
+
+**Filter**
+:   Selection done before and independently of
+    classifier construction. Can be univariate or multivariate.
+
+**Wrapper**
+:   Embed classifier construction within feature
+    selection process. Heuristic search methods compare models, favor
+    adding or removing features based on optimization of some
+    specified metric on resulting classifiers.
+
+**Embedded**
+:   Feature selection is inherently built into
+    some classifier construction methods.
+
+For a nice figure providing more detail on the advantages and
+disadvantages associated with each of these categories, along with
+some standard examples, you can follow the link to
+<https://academic.oup.com/view-large/1739292>.
+
+I can't do justice to the wide range of feature selection techniques
+in the limited time available in this course, so we're going to focus
+on one particularly simple method: a plain old $t$-test. Here's an R
+function to select a fixed number of features according to $t$-test
+$p$-values:
+
+```{r}
+## install.packages("BiocManager")     ## uncomment and run if necessary
+## BiocManager::install("genefilter")  ## uncomment and run if necessary
+selectByTTest = function(x, y, m) {
+     ## use genefilter package for efficient repeated t-test functions
+     ## (here will use genefilter::colttests)
+    require(genefilter)
+     ## assume x is samples-in-rows, genes-in-columns format!
+    p = colttests(x, y)$p.value
+     ## sort genes by order of p, return names of first m
+    return(colnames(x)[order(p)[1:m]])
+}
+```
+
+In order to use this feature selection method as part of a
+classification "pipeline", we need to connect it ("upstream") to a
+("downstream") classification algorithm:
+
+```{r}
+ ## arguments to featSelFit:
+ ## - x is matrix or data.frame of feature values
+ ## - y is factor of classification labels
+ ## - selector is function taking x and y as arguments
+ ##                        and returning selected feature names
+ ## - fitter is a function taking x and y as arguments
+ ##                        and returning fit model object
+featSelFit = function(x, y, selector, fitter) {
+    require(caret)
+      ## extract features using selector function:
+    features = selector(x, y)
+     ## retain only selected features in x for fitting knn model:
+    x = x[ , features, drop=FALSE]
+     ## fit the desired model using the selected feature set:
+    fit = fitter(x, y)
+     ## package results in list; need to remember features and fit:
+    out = list(features=features, fit=fit)
+     ## declare this list to be a FeatureSelectedFitModel object
+     ## (this will be important for implementing predict method below):
+    class(out) = "FeatureSelectedFitModel"
+    return(out)
+}
+```
+
+Given that we want to make predictions using the
+`FeatureSelectedFitModel` object output by `featSelFit`, we'll
+need to implement a `predict` method for this new (S3) class:
+
+```{r}
+ ## arguments for predict method telling R how to make predictions from a
+ ## FeatureSelectedFitModel object:
+ ## - object is a list with class attribute "FeatureSelectedFitModel"
+ ##   (so it should have named elements object$fit, object$features)
+ ## - x is matrix or data.frame of feature values to make predictions for
+ ## - ... any other arguments are passed along to predict.knn3
+predict.FeatureSelectedFitModel = function(object, x, ...) {
+     ## first keep only the features in object$features:
+    x = x[ , object$features, drop=FALSE]
+     ## now predict using object$fit on the selected features:
+    return(predict(object$fit, x, ...))
+}
+```
+
+OK, now we're ready to try our $t$-test feature selection-then-knn
+classify modeling strategy out on the Hess data set:
+
+```{r}
+ ## define bindArgs function to allow fixing (i.e. binding)
+ ## the argument for
+ ## - parameter m in selectByTTest and
+ ## - parameter k in knn3
+ ## to extract a function of only the feature data x and
+ ## output class vector y for use in featSelFit:
+bindArgs = function(f, ...) {
+    args = list(...)
+    return(function(...) {do.call(f, args=c(list(...), args))})
+}
+ ## now let's fit the model:
+fsKnnFit = featSelFit(x = t(hessTrain),
+                      y = hessTrainY,
+                      selector = bindArgs(selectByTTest, m=25),
+                      fitter = bindArgs(knn3, k=9))
+ ## ...and make predictions using with with fit model:
+fsKnnTestPredictionProbs = predict(fsKnnFit, t(hessTest))
+head(fsKnnTestPredictionProbs)
+```
+
+```{r}
+fsKnnTestPredictionClass = predict(fsKnnFit, t(hessTest), type="class")
+head(fsKnnTestPredictionClass)
+```
+
+```{r}
+table(fsKnnTestPredictionClass, hessTestY)
+```
+
+```{r}
+fsKnnCaretized = list(
+    library = "genefilter",
+    type = "Classification",
+    parameters = data.frame(
+        parameter = c("m", "k"),
+        class = c("integer", "integer"),
+        label = c("number features", "number neighbors")
+    ),
+     ## try all combinations of m in 10, 100, 1000, 10000
+     ##                      and k in 5, 9, 19
+    grid = function(x, y, len=NULL, ...) {
+        expand.grid(m=c(10, 100, 1000, 10000), k=c(5, 9, 19))
+    },
+     ## fit should be function of x, y and then any parameters
+     ## (here these are m and k) which must be in list named params:
+    fit = function(x, y, param, ...) {
+        featSelFit(x,
+                   y,
+                   selector = bindArgs(selectByTTest, m=param$m),
+                   fitter = bindArgs(knn3, k=param$k))
+    },
+     ## caret::train wants predict to make class predictions:
+     ## - first argument must be named modelFit
+     ## - second should be named newdata
+    predict = function(modelFit, newdata, ...) {
+        predict(modelFit, newdata, type="class")
+    },
+     ## let caret::train use plain-old predict
+     ## (will really be predict.FeatureSelectedFitModel)
+     ## to make probabilistic predictions from fit model object
+    prob = predict
+)
+```
+
+We can now supply `fsKnnCaretized` as the `method` argument for `train`:
+
+```{r}
+caretOut = train(x = t(hessTrain),
+                 y = hessTrainY,
+                 method = fsKnnCaretized,
+                 trControl = trainControl(method="cv", number=5))
+caretOut
+```
+
+The objects returned by `caret::train` (of class `train`,
+naturally) can be `ggplot`ed:
+
+```{r}
+ggplot(caretOut) + scale_x_log10()
+```
+
+It is interesting to note that for this data set the size of the
+selected feature set will vary considerably upon re-running the
+cross-validation.
+
+Feature Extraction 
+==================
+
+An alternative approach to feature selection to mitigating the
+problems of overfitting and high computational workload associated
+with machine learning with high-dimensional data is *feature extraction*.
+
+While
+
+**feature selection**
+:   reduces the size of the feature set
+    presented to a classification or regression algorithm by retaining
+    only a small subset of the feature set,
+
+**feature extraction**
+:   applies a mathematical
+    transformation to the high-dimensional input data to derive a
+    low-dimensional feature set.
+
+For example, if you were trying to classify day vs. night situations
+with digital image data, you could simply average the intensities of
+all pixels together to extract a "light level" feature. Note that
+this single extracted feature still depends on the value of *all*
+of the input features, so it doesn't reduce the amount of data you
+need to collect to evaluate the model, but it does massively diminish
+the complexity of the task confronting whatever downstream
+classification algorithm you apply!
+
+With gene expression data, the most obvious and widely used method of
+feature extraction is PCA, so we will use this for our example. Recall
+that the PC1 scores of a sample are defined as a weighted sum (or
+linear combination) of feature values with the feature weights learned
+so as to optimally model feature values based on (feature mean +
+feature weight * sample score). Higher PCs can then be defined so as
+to in a similar way so as to successively improve the model.
+
+When building a classification or regression model using PCA for
+feature extraction, we learn the feature weights for the various
+principal components (which make up the elements of the "rotation
+matrix"), as well as the feature mean values, using the training set
+(only). These weights and means are then fixed parameters of the fit
+model and should not be updated when presented with test data!
+
+Here is a function for learning the PCs from a training set (provided
+to the function as a matrix of feature values `x`) which returns a
+function `extractor` for assessing the sample scores for a test set
+`newdata`:
+
+```{r}
+ ## arguments to extractPCs
+ ## - x is matrix or data.frame of feature values
+ ## - m is number of principal component features to extract
+extractPCs = function(x, m, ...) {
+     ## assume x is samples-in-rows, genes-in-columns format!
+     ## training-set-estimated mean expression of each gene:
+    mu = colMeans(x)
+    pca = prcomp(x, center=TRUE, scale.=FALSE)
+     ## extract matrix needed to project new data onto first m extracted PCs:
+    projection = pca$rotation[ , 1:m, drop=FALSE]
+     ## define extraction function to extract features from new data:
+    extractor = function(newdata) {
+         ## sweep out training-set-estimated gene means:
+        newdata = sweep(newdata, 2, mu, '-')
+        return(newdata %*% projection)
+    }
+     ## return the function "extractor" which can be applied to newdata;
+     ## this function yields coordinates of samples in newdata in PC-space
+     ## learned from the training data passed in as x argument.
+    return(extractor)
+}
+```
+
+We can hook this function for learning the PC features to extract from
+data up to our knn classification algorithm in a manner similar to
+what we did for feature selection:
+
+```{r}
+ ## arguments to pcaKnn:
+ ## - x is matrix or data.frame of feature values
+ ## - y is factor of classification labels
+ ## - extractionLearner is function taking x and y as arguments and
+ ##                                 returning extractor function
+ ## - fitter is a function taking x and y as arguments and
+ ##                        returning fit model object
+featExtFit = function(x, y, extractionLearner, fitter) {
+     ## use extractionLearner function to learn extractor using data x, y:
+    extractor = extractionLearner(x, y)
+     ## extract features from x for fitting knn model:
+    x = extractor(x)
+     ## fit the desired model using the selected feature set:
+    fit = fitter(x, y)
+     ## package results in list; need to remember extractor and fit:
+    out = list(extractor=extractor, fit=fit)
+     ## declare this list to be a FeatureExtractedFitModel object:
+    class(out) = "FeatureExtractedFitModel"
+    return(out)
+}
+```
+
+Once again we need to implement a `predict` method for our newly
+defined `FeatureExtractedFitModel` class:
+
+```{r}
+ ## arguments for predict method telling R how to make predictions from a
+ ## FeatureExtractedFitModel object:
+ ## - object is a list with class attribute "FeatureExtractedFitModel"
+ ##   (so it should have named elements object$fit, object$extractor)
+ ## - x is matrix or data.frame of feature values to make predictions for
+ ## - ... any other arguments are passed along to predict.knn3
+predict.FeatureExtractedFitModel = function(object, x, ...) {
+     ## first extract the features using object$extractor:
+    x = object$extractor(x)
+     ## now predict using object$fit on the extracted features:
+    return(predict(object$fit, x, ...))
+}
+```
+
+And now we can go ahead and try modeling the Hess data using an ML
+pipeline with PCA feature extraction feeding into knn classification:
+
+```{r}
+pcaKnnFit = featExtFit(x = t(hessTrain),
+                       y = hessTrainY,
+                       extractionLearner = bindArgs(extractPCs, m=5),
+                       fitter = bindArgs(knn3, k=9))
+pcaKnnTestPredictionClass = predict(pcaKnnFit, t(hessTest), type="class")
+table(pcaKnnTestPredictionClass, hessTestY)
+```
+
+In order to do cross-validation with `caret::train`, we'll need to
+package everything up in a list with all of the named components
+`train` will want to see:
+
+```{r}
+pcaKnnCaretized = list(
+    library = NULL,
+    type = "Classification",
+    parameters = data.frame(
+        parameter = c("m", "k"),
+        class = c("integer", "integer"),
+        label = c("number features", "number neighbors")
+    ),
+     ## try all combinations of m in 3, 4, 5 and k in 5, 9, 19
+    grid = function(x, y, len=NULL, ...) {
+        expand.grid(m=3:5, k=c(5, 9, 19))
+    },
+     ## fit should be function of x, y and named list params:
+    fit = function(x, y, param, ...) {
+        featExtFit(x,
+                   y,
+                   extractionLearner = bindArgs(extractPCs, m=param$m),
+                   fitter = bindArgs(knn3, k=param$k))
+    },
+     ## caret::train wants predict to make class predictions:
+     ## arguments must be named modelFit and newdata
+    predict = function(modelFit, newdata, ...) {
+        predict(modelFit, newdata, type="class")
+    },
+    prob = predict
+)
+```
+
+Let's give this `train` and let it do its thing:
+
+```{r}
+caretOut = train(x = t(hessTrain),
+                 y = hessTrainY,
+                 method = pcaKnnCaretized,
+                 trControl = trainControl(method="cv", number=5))
+caretOut
+```
+
+```{r}
+ggplot(caretOut)
+```
+
+Going deeper 
+============
+
+It may have occurred to you that feature selection can be seen as a
+particularly simple type of feature extraction which "transforms"
+the input feature matrix by simply projecting it onto a few select
+dimensions.
+
+Similarly, just as we previously described the transformation of a
+data set by PCA feature extraction as a type of prediction, we could
+reverse viewpoints and frame the action of `predict` methods as
+really just another type of data transformation---albeit with some
+peculiar restrictions on the transformed output values (e.g., must be
+probability scores, must be class labels from particular set of
+possibilities, etc.).
+
+From this point of view, an ML pipeline is an ordered sequence of ML
+algorithm steps. To train such a pipeline, we go through the sequence:
+-   training the $i^{\text{th}}$ ML algorithm step using the
+    transformed output from step $i-1$ as our input feature matrix for
+    the current step,
+-   thus learning fit submodel $i$.
+-   We then transform the output again using our newly trained fit
+    submodel $i$ and pass it along as input feature matrix to ML
+    algorithm $i+1$.
+
+To make predictions using the fit pipeline model resulting from this
+training procedure, we iterate through the the ordered sequence of
+trained submodels, taking the transformed output from step $i-1$ as
+input feature matrix to be transformed by fit submodel $i$ and then
+passed along to step $i+1$. The predicted values are then whatever is
+output from the final step of the fit pipeline.
+
+The field of *deep learning*
+([@goodfellow2016deep]) builds such pipelines out of individual
+steps ("layers") for which the argument feature matrix and output
+transformed feature matrix are similar enough in nature that the same
+type of submodel can be linked together repeatedly to generate very
+long pipelines. Because each individual layer in a deep learning model
+is itself generally composed of many similar subunits (artificial
+"neurons"), the structure of a deep learning model is typically
+referred to as a *network* instead of a pipeline, and we speak of
+a many-layer network as being *deep* instead of long.
+
+Deep learning is beyond the scope of this course, but if you work on
+any projects involving machine learning long enough it's bound to come
+up at some point. Especially in problems with very large numbers of
+$n$ sampling units, deep learning models can often outperform other
+methods, though they are prone to overfitting and tend to require a
+great deal of time and effort to get working correctly.
+

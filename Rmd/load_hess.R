@@ -4,18 +4,18 @@ rt = function(f) {
 }
 
  ## training set:
-hessTrain = rt("data/HessTrainingData.tsv.gz")
-hessTrainAnnot = rt("data/HessTrainingAnnotation.tsv")
+hessTrain = rt("../data/HessTrainingData.tsv.gz")
+hessTrainAnnot = rt("../data/HessTrainingAnnotation.tsv")
  ## align annotation data.frame with expression data:
 hessTrainAnnot = hessTrainAnnot[colnames(hessTrain), ]
 
  ## test set:
-hessTest = rt("data/HessTestData.tsv.gz")
-hessTestAnnot = rt("data/HessTestAnnotation.tsv")
+hessTest = rt("../data/HessTestData.tsv.gz")
+hessTestAnnot = rt("../data/HessTestAnnotation.tsv")
  ## align annotation data.frame with expression data:
 hessTestAnnot = hessTestAnnot[colnames(hessTest), ]
 
-probeAnnot = rt("data/U133A.tsv.gz")
+probeAnnot = rt("../data/U133A.tsv.gz")
  ## align hessTrain and hessTest to probeAnnot:
 hessTrain = hessTrain[rownames(probeAnnot), ]
 hessTest = hessTest[rownames(probeAnnot), ]

@@ -1,0 +1,656 @@
+---
+title: An R Markdown document converted from "5-regression-models-R.ipynb"
+output: html_document
+---
+
+Regression Models 
+=================
+
+```{r}
+source("load_hess.R")
+source("../maclearn_utils_2020.R")
+library(caret)
+library(ggplot2)
+theme_set(theme_bw())
+```
+
+Let's put our study of classification modeling on pause for a moment
+and briefly consider regression instead. As a reminder, these two
+terms are generally distinguished in supervised ML contexts by the
+nature of the output to be predicted:
+
+**Classification**
+:   models predict discrete class labels, while
+
+**Regression**
+:   models predict numeric values.
+
+There are certainly weird edge cases that blur these boundaries, but
+we won't get into any of those here!
+
+I'm going to jump right into an example using the Hess data set here:
+Modeling the numeric field `DLDA30.Value` from `hessTrainAnnot`
+using the gene expression values from `hessTrain`. More
+specifically, using 10 probe sets selected on the basis of correlation
+with the desired output to, which will be facilitated by defining:
+
+```{r}
+selectByPearsonCorrelation = function(x, y, m) {
+     ## assume x is samples-in-rows, genes-in-columns format!
+    r = cor(x, y)[ , 1]
+    return(colnames(x)[order(abs(r), decreasing=TRUE)[1:m]])
+}
+```
+
+This function is a continuous-`y` analog of the `selectByTTest`
+function introduced when we initially discussed feature selection.
+
+It will also prove convenient to define an "adapter function" for
+fitting a linear model in R taking directly as arguments a matrix of
+gene expression values `x` and a vector of responses `y` instead
+of the more complex (though also much more flexible!) formula
+interface of `lm`:
+
+```{r}
+linFitter = function(x, y) {
+    lm(y ~ ., data=data.frame(x, check.names=FALSE))
+}
+```
+
+With these preliminaries out of the way, we can now fit our
+feature-selected linear model:
+
+```{r}
+fsLinFit = featSelFit(
+    x = t(hessTrain),
+    y = hessTrainAnnot$DLDA30.Value,
+    selector = bindArgs(selectByPearsonCorrelation, m=10),
+    fitter = linFitter
+)
+fsLinTrainPreds = predict(fsLinFit, t(hessTrain))
+ ## estimate R^2:
+cor(fsLinTrainPreds, hessTrainAnnot$DLDA30.Value)^2
+```
+
+```{r}
+qplot(fsLinTrainPreds, hessTrainAnnot$DLDA30.Value)
+```
+
+Looks pretty good! Of course, this is comparing predictions to
+resubsitution-based predictions, so that may or may not be
+meaningful. Let's try looking at the test set predictions instead:
+
+```{r}
+fsLinTestPreds = predict(fsLinFit, t(hessTest))
+cor(fsLinTestPreds, hessTestAnnot$DLDA30.Value)^2
+```
+
+```{r}
+qplot(fsLinTestPreds, hessTestAnnot$DLDA30.Value)
+```
+
+Cross-validation can be useful with regression just as it is in
+classification, and can be performed using `caret::train` in a
+similar manner:
+
+```{r}
+fsLinModCaretized = list(
+    library = NULL,
+    type = "Regression",    ## regression, not classification, this time
+    parameters = data.frame(parameter="m", class="integer", label="n_features"),
+     ## we'll keep using 10 features (probe sets):
+    grid = function(x, y, len=NULL, ...) {data.frame(m=10)},
+    fit = function(x, y, param, ...) {
+        featSelFit(x,
+                   y,
+                   selector = bindArgs(selectByPearsonCorrelation, m=param$m),
+                   fitter = linFitter)
+    },
+    predict = function(modelFit, newdata, ...) {predict(modelFit, newdata, ...)},
+    prob = NULL             ## prob predictions unnecessary for regression
+)
+caretOut = train(x = t(hessTrain),
+                 y = hessTrainAnnot$DLDA30.Value,
+                 method = fsLinModCaretized,
+                 trControl = trainControl(method="cv", number=5))
+caretOut
+```
+
+Lest you get too excited about these results, I should disclose that
+`DLDA30.Value` is itself the output from a linear classification
+algorithm applied by Hess et al.
+
+Regressing Noise 
+----------------
+
+Having seen what regression results look like from an ML standpoint
+when everything goes smoothly and there's a nice consistent and easily
+found signal shared by both training and test data sets, let's
+consider the opposite extreme of no real signal at all. To that end,
+we'll define a vector of output `noise` unrelated to any input
+feature:
+
+```{r}
+set.seed(123)
+noise = rnorm(ncol(hessTrain))
+```
+
+Let's also define one more convenience function for pulling the top
+few features by Pearson correlation:
+
+```{r}
+topM = function(m) {bindArgs(selectByPearsonCorrelation, m=m)}
+```
+
+Onto fitting the noise:
+
+```{r}
+fsNoiseFit = featSelFit(t(hessTrain), noise, topM(10), linFitter)
+fsLinNoisePreds = predict(fsNoiseFit, t(hessTrain))
+cor(fsLinNoisePreds, noise)^2
+```
+
+```{r}
+qplot(fsLinNoisePreds, noise)
+```
+
+A resubstitution-estimated $R^2$ value of
+47.5%---that's clearly overfit!
+Cross-validation to the rescue:
+
+```{r}
+fsLinModCaretized = list(
+    library = NULL,
+    type = "Regression",
+    parameters = data.frame(parameter="m", class="integer", label="n_features"),
+    grid = function(x, y, len=NULL, ...) {data.frame(m=10)},
+    fit = function(x, y, param, ...) {
+        featSelFit(x, y, topM(param$m), linFitter)
+    },
+    predict = function(modelFit, newdata, ...) {predict(modelFit, newdata, ...)},
+    prob = NULL
+)
+caretNoise = train(t(hessTrain), noise, fsLinModCaretized,
+                   trControl = trainControl(method="cv", number=5))
+caretNoise
+```
+
+Notice that we've been (correctly) keeping the feature selection step
+"under cross-validation," meaning that we re-select a (potentially
+different!) feature set in each fold of cross-validation making sure
+to exclude the held-out samples from the calculation of feature scores
+(Pearson correlations here). This is very important---feature
+selection is a supervised ML step and can be very sensitive to
+overfitting!
+
+In order to demonstrate this, let's see what happens if we incorrectly
+apply feature selection prior to cross-validation of only the
+regression fitting step:
+
+```{r}
+ ## how much overfitting results from feature selection alone?
+topFeatsWholeTrain = data.frame(
+    t(hessTrain)[ , fsNoiseFit$features],  ## re-use features from fsNoiseFit above
+    check.names = FALSE
+)
+noSelectionLinModCaretized = list(
+    library = NULL,
+    type = "Regression",
+     ## define unused dummy parameter to keep caret happy
+    parameters = data.frame(parameter="dummy", class="integer", label="dummy"),
+    grid = function(x, y, len=NULL, ...) {data.frame(dummy=0)},
+    fit = function(x, y, param, ...) {linFitter(x, y)},
+    predict = function(modelFit, newdata, ...) {
+        predict(modelFit, newdata, ...)
+    },
+    prob = NULL
+)
+badCaret = train(x = topFeatsWholeTrain,
+                 y = noise,
+                 method = noSelectionLinModCaretized,
+                 trControl = trainControl(method="cv", number=5))
+badCaret
+```
+
+So, to sum up: $R^2$ of
+40.2% (exact value may vary depending on cross-validation folds) for pure,
+feature-independent noise using "cross-validation" but forgetting to
+take the overfitting resulting from feature selection into account,
+compared to an estimate of $R^2$ =
+3.1% when
+cross-validation is done correctly! Always, always, *always* keep
+feature selection under cross-validation.
+
+Regularization 
+==============
+
+Let's go back and look at a couple of the probe sets chosen among the
+ten features used to predict `DLDA30.Value` above:
+
+```{r}
+twoProbeSets = c("203928_x_at", "203929_s_at")
+twoProbeSets %in% fsLinFit$features
+```
+
+```{r}
+qplot(t(hessTrain)[ , twoProbeSets[1]], t(hessTrain)[ , twoProbeSets[2]])
+```
+
+That's interesting---the measured expression values of these two probe
+sets are quite similar! There is in fact a good explanation for this:
+
+```{r}
+probeAnnot[twoProbeSets, "Gene.Symbol"]
+```
+
+Microarrays often have multiple probe sets targeting the same gene,
+and, as a result, in many---though not all!---cases, these probe sets
+will pick up very similar signals. If one such probe set is correlated
+with the desired output to be predicted, the other will thus also tend
+to exhibit such correlation; this is what is happening here.
+
+Given this build up, one might expect that the linear model fit using
+these features (along with 8 others in this case) would assign similar
+coefficients to both. Does it?
+
+```{r}
+coef(fsLinFit$fit)[paste0("\`", twoProbeSets, "\`")]
+```
+
+Not so much---not only are the magnitudes of the coefficients very
+different, but they even have opposite signs!
+
+Lest you think that perhaps the linear model has found some useful
+difference between these two probe sets that isn't immediately
+apparent to us in the Hess data set, consider the following simulated
+example:
+
+```{r}
+x = matrix(rnorm(20), nrow=10, ncol=2)
+x[ , 2] = x[ , 1] + 0.01 * x[ , 2]      ## force approximate collinearity
+y = -x[ , 1] - x[ , 2] + rnorm(10)      ## true beta_1 = beta_2 = -1
+coef(lm(y ~ ., data=data.frame(x)))
+```
+
+This is in fact a well-known artifact of linear models often referred
+to as the problem of multicollinearity. One way of dealing with it is
+to manually remove variables one at a time until you've gotten rid of
+it, but since this is a course in machine learning we will not do
+that.
+
+An alternate solution is to modify the algorithm for fitting a linear
+model by incorporating something called *regularization*.
+
+Unregularized (standard) linear regression uses maximum likelihood to
+fit the coefficients $\beta_g$, where $g$ indexes features $g$, by
+ordinary least-squares (OLS) estimator:
+$$\label{eq:ols}
+\hat{\beta}_0, \hat{\boldsymbol{\beta}} =
+\underset{\beta_0, \boldsymbol{\beta}}{
+  \operatorname{arg\,min}} \,
+    \sum\limits_i \left(
+       y_i - \beta_0 - \boldsymbol{\beta} \cdot \mathbf{x}_i
+    \right)^2$$
+
+where $\mathbf{x}_i$ is the vector of feature values $x_{ig}$ for
+sampling unit $i$, is the vector of coefficients $\beta_g$, and
+$\boldsymbol{\beta} \cdot \mathbf{x}_i = \sum_g \beta_g x_{ig}$ is the
+"dot product" of the two vectors.
+
+Since $\hat{y}_i = \beta_0 + \boldsymbol{\beta} \cdot \mathbf{x}_i$ is
+the formula applied by linear regression to predict the value $y_i$
+for sampling unit $i$, Eq [eq:ols](#eq:ols) says we want to choose the
+coefficients $\beta_g$ to minimize the sum of squared
+*error residuals* $y_i - \hat{y}_i$.
+
+Regularization modifies Eq [eq:ols](#eq:ols) by adding a penalty term:
+$$\label{eq:ols-penalized}
+\hat{\beta}_0, \hat{\boldsymbol{\beta}} =
+\underset{\beta_0, \boldsymbol{\beta}}{
+  \operatorname{arg\,min}} \, \left\{ \,
+    \sum\limits_i \left(
+       y_i - \beta_0 - \boldsymbol{\beta} \cdot \mathbf{x}_i
+    \right)^2 + \phi \sum\limits_g \left| \beta_g \right|^p \right\}$$
+
+where the exponent $p=1$ for L1, or "lasso," regression
+([@tibshirani1996regression]), or $p=2$ for L2, or "ridge,"
+regression ([@tikhonov1943stability; @hoerl1962application]). This
+has the effect of biasing the choice of coefficients $\beta_g$ towards
+0 by an amount dependent on the strength of the $\phi$ of the
+regulaization applied.
+
+(If you're partial to Bayesian statistics, you might find it
+interesting to note that L1 regression can be derived from assuming a
+Laplace-distributed prior for the coefficients $\beta_g$, while L2
+regression can similarly be derived assuming a more pedestrian
+Gaussian-distributed prior for the $\beta_g$ [@park2008bayesian].)
+Let's try L2 regularization out using the `glmnet` package (one
+advantage of which is automated selection of regularization strength
+parameter):
+
+```{r}
+ ## regularizedGLM, defined in maclearn_utils_2020.R,
+ ## wraps glmnet to facilitate autmated lambda selection
+ ## (lambda controls regularization strength)
+ ## - alpha=0 is L2/ridge regression; alpha=1 is L1/lasso
+l2mod = regularizedGLM(x, y, alpha=0)
+coef(l2mod)
+```
+
+That looks better! What if we try L1 regularization?
+
+```{r}
+l1mod = regularizedGLM(x, y, alpha=1)
+coef(l1mod)
+```
+
+In this case, L1 doesn't look so great, but before you write it off,
+let me give you a bit of background. L2 regularization is older, much
+easier (and faster) to fit, and tends to "split the difference"
+between collinear predictors---as it did here---while L1
+regularization is newer, trickier (and slower) to fit, while tending
+to pick a few variables to assign high magnitude coefficients to while
+giving all others either exactly 0 or very low magnitudes. That is,
+L1/lasso regularization is essentially an *embedded feature selection*
+algorithm!
+
+The multicollinearity problem becomes increasingly severe as the
+dimensionality of the data set increases until it breaks the classical
+linear modeling framework entirely when the number of features exceeds
+the number of sampling units in the training set. Regularization fixes
+this and allows fitting such "overparametrized" linear models.
+
+Logistic Regression 
+===================
+
+Linear models can be used for classification as well as
+regression. The most popular linear model for classification goes
+under the confusing name "logistic regression," despite the fact
+that it is indeed a classication algorithm.
+
+The idea of logistic regression is to build a linear model to predict
+the "logit-transformed" probability that a sampling unit should be
+given a classification label $y=1$ (as opposed to the other possible
+label $y=0$), where the logit function is
+$$\label{eq:logit-function}
+\text{logit}(p) = \log\left(\frac{p}{1-p}\right)$$
+The logit function stretches the range of probabilities (from 0 to 1)
+out to range all the way from $-\infty$ to $+\infty$: this is good
+because it turns out to be difficult to fit linear models well in such
+a way as to constrict the output range to a narrow interval like 0 to
+1.
+
+It turns out that if the coefficients $\beta_g$ are a linear model for
+$\text{logit}(p)$, then the predicted probability of the
+classification label $y$ taking the value 1 (i.e. whichever class has
+been declared "positive") for a sampling unit with feature values
+$x_g$ wrapped up into vector $\mathbf{x}$ is
+$$\label{eq:logistic}
+\hat{p} = \text{expit}(\beta_0 + \boldsymbol{\beta} \cdot \mathbf{x})$$
+where
+$$\label{eq:expit}
+\text{expit}(u) = \frac{1}{1+\text{exp}(-u)}$$
+is the *logistic*, or inverse-logit, function. Eq
+[eq:logistic](#eq:logistic) holds because expit is indeed the functional
+inverse of the logit function:
+$\text{expit}\!\left(\text{logit}(p)\right) = p$ for all
+$p \in (0, 1)$ .
+
+Logistic regression is a type of *generalized linear model*, or
+GLM ([@nelder1972generalized; @agresti2015foundations]).
+
+```{r}
+logisticFitter = function(x, y) {
+    glm(formula = y ~ .,
+        data = data.frame(x, y=y, check.names=FALSE),
+        family = binomial)  ## family=binomial for logistic regression
+}
+```
+
+Logistic regression suffers from the same sort of multicollinearity
+problems as linear regression and hence requires one (or more) of
+feature selection, feature extraction, and/or regularization for
+application in high-dimensional (more features than sampling units)
+contexts. Here we'll connect our $t$-test feature selector upstream of
+a `logisticFitter` in a simple ML pipeline:
+
+```{r}
+fsLogisticFit = featSelFit(x = t(hessTrain),
+                           y = hessTrainY,
+                           selector = bindArgs(selectByTTest, m=10),
+                           fitter = logisticFitter)
+fsLogisticTestPreds = predict(
+    fsLogisticFit,
+     ## predict.glm wants newdata as data.frame, not matrix:
+    data.frame(t(hessTest), check.names=FALSE)
+)
+ ## predict.glm returns vector, not matrix!
+ ## - these are logit-transformed probabilities, hence may be <0 or >1
+head(fsLogisticTestPreds)
+```
+
+With `glm`, it's easiest to generate class predictions by simply
+discretizing the logit-transformed prediction vector using `ifelse`:
+
+```{r}
+ ## threshold 0 below b/c logit-transformed p, not p itself!
+ ## - note that logit(0.5) = log(0.5/0.5) = 0
+fsLogisticTestPredClass = factor(ifelse(
+    fsLogisticTestPreds < 0, "pCR", "RD"
+))
+contingency = table(fsLogisticTestPredClass, hessTestY)
+contingency
+```
+
+Let's take a look at the features selected by the pipeline here:
+
+```{r}
+fsLogisticFit$features
+```
+
+```{r}
+probeAnnot[fsLogisticFit$features, "Gene.Symbol"]
+```
+
+Once again we see two probe sets for the same gene (BTG3 in this case)
+showing up!
+
+```{r}
+qplot(t(hessTrain)[ , fsLogisticFit$features[1]],
+      t(hessTrain)[ , fsLogisticFit$features[2]])
+```
+
+These two are even more tightly correlated than the two probe sets we
+ran into in the noise modeling excercise above! Let's check their
+coefficients in the logistic fit:
+
+```{r}
+coef(fsLogisticFit$fit)[2:3]
+```
+
+Once again despite the highly similar measured expression values
+associated with the two probe sets, the coefficients take opposite
+signs! This logistic model fit will likely be improved by
+regularization:
+
+```{r}
+fsRegLogisticFit = featSelFit(
+    x = t(hessTrain),
+    y = hessTrainY,
+    selector = bindArgs(selectByTTest, m=10),
+    fitter = bindArgs(regularizedGLM, family="binomial", alpha=0)
+)
+coef(fsRegLogisticFit$fit)[2:3]
+```
+
+So when L2 regularization is used in fitting logistic regression
+model, the coefficients for the two probe sets for BTG3 are almost
+identical (and of much more plausible magnitude as well!). Does
+regularization effect the test set predictions?
+
+```{r}
+fsRegLogisticTestPreds = predict(fsRegLogisticFit, t(hessTest))
+head(fsRegLogisticTestPreds)
+```
+
+```{r}
+fsRegLogisticTestPredClass =
+        predict(fsRegLogisticFit, t(hessTest), type="class")
+table(fsRegLogisticTestPredClass, hessTestY)
+```
+
+In this case, regularization produces a model with slightly improved
+overall accuracy, accurately calling one more pCR and one more RD
+sample. Beyond this small improvement in estimated model performance,
+I'd also argue that the regularized model is superior in that the
+coefficients are more easily interpretable because they do not
+artificially differentiate between two probe sets for the same
+underlying gene which show negligible differences in measured
+expression values.
+
+We could also analyze the performance of either or both of the
+regularized and unregularized feature-selected logistic classification
+pipelines in the test set using cross validation just as we did with
+the knn pipelines, but as it doesn't introduce any new concepts I will
+in the interests of time instead move on.
+
+DLDA and Naive Bayes 
+====================
+
+"Naive Bayes" describes a family of statistical classification
+methods sharing the common assumption that the feature values are
+conditionally independent of each other within each class $y$
+([@lewis1998naive]):
+$$\label{eq:naive-bayes-assumption}
+\mathbb{P}(\mathbf{X}=\mathbf{x} \mid Y=y) =
+        \prod\limits_g {\mathbb{P}(X_g=x_g \mid Y=y)}$$
+Eq [eq:naive-bayes-assumption](#eq:naive-bayes-assumption) can be substituted into Bayes'
+formula to calculate classification probabilities:
+$$\label{eq:naive-bayes-classification}
+\mathbb{P}(Y=y \mid \mathbf{X}=\mathbf{x}) = \frac{
+    \pi_y \prod\limits_g {\mathbb{P}(X_g=x_g \mid Y=y)}
+}{
+    \sum\limits_{y'} \pi_{y'} {\prod\limits_g {\mathbb{P}(X_g=x_g \mid Y=y')}}
+}$$
+
+where $\pi_y = \mathbb{P}(Y=y)$ is the marginal probability (often
+called a "prior probability" in this context) of class $y$ given no
+information about the feature values $\mathbf{x}$.
+
+Diagonal linear discriminant analysis, or DLDA, is a form of naive
+Bayes classification with the additional assumption that
+$\text{logit}(\mathbb{P}(Y=1 \mid \mathbf{X}=\mathbf{x})$ is linear in
+$\mathbf{x}$, as will be the case if the conditional probability densities
+for $\mathbf{X} \mid Y=0$ and $\mathbf{X} \mid Y=1$
+are both Gaussian with different means but the same (diagonal) covariance
+([@dudoit2002comparison]). This linearity assumption is
+shared with logistic regression, though logistic regression generally
+does *not* make the naive Bayes assumption of Eq
+[eq:naive-bayes-assumption](#eq:naive-bayes-assumption) and thus usually results in
+different fit model coefficients.
+
+Before we take a look at DLDA itself, let's simplify our data by first
+extracting the features "manually" (this is kosher only because
+we're not going to do (biased) performance estimation here, just examine
+the resulting model coefficients!):
+
+```{r}
+ ## extract feature values for selected features to simplify example
+featData = t(hessTrain)[ , fsLogisticFit$features]
+ ## center features to 0 mean and scale to unit variance:
+featData = scale(featData, center=TRUE, scale=TRUE)
+```
+
+While we're at it, let's also take a look at what the $t$-statistics
+that led to these features being selected were:
+
+```{r}
+tStats = colttests(featData, hessTrainY)$statistic
+```
+
+Now we'll fit a DLDA model using the `HiDimDA` package:
+
+```{r}
+## install.packages("HiDimDA")  ## uncomment and run if necessary
+library(HiDimDA)
+dldaFit = Dlda(featData, hessTrainY)
+dldaCoef = dldaFit$scaling[ , 1]      ## HiDimDA is weird about coef
+qplot(tStats, dldaCoef, alpha=I(0.5)) +
+        stat_smooth(method="lm", se=FALSE, size=0.5, color="dodgerblue")
+```
+
+Look at that: the coefficients `dldaCoef` of the fit DLDA model are
+determined by the $t$-statistics of the corresponding features! (The
+functional relationship is actually slightly more complicated than the
+straight line used for the plot, however.)
+
+This shouldn't be too surprising: naive Bayes assumes (Eq
+[eq:naive-bayes-assumption](#eq:naive-bayes-assumption)) that the classifier is determined
+uniquely by the relationship of each feature *individually* with
+the class labels. This is exactly the sort of bivariate relationship
+the $t$-statistic was designed to quantify.
+
+Here's one more comparison that might be a bit more suprising:
+
+```{r}
+ ## force a very high value of the regularization parameter lambda:
+highlyRegLogistic = regularizedGLM(featData, hessTrainY,
+                                   family=binomial, lambda=10000)
+highlyRegCoef = coef(highlyRegLogistic)[-1]  ## [-1] to remove intercept
+qplot(tStats, highlyRegCoef, alpha=I(0.5)) +
+        stat_smooth(method="lm", se=FALSE, size=0.5, color="dodgerblue")
+```
+
+Thus we see that very highly L2-regularized logistic regression
+produces linear classifiers whose coefficients are a function of
+individual feature $t$-statistics, just like DLDA.
+
+Naive Bayes: does it work?
+--------------------------
+
+In many cases, yes, naive Bayes (NB) models, including DLDA, work
+quite well: e.g., the `DLDA30.Value` column is included in
+`hessTrainAnnot` and `hessTestAnnot` because Hess et al. found
+that DLDA with 30 features exhibited the best performance under (fancy
+stratified) cross-validation! More generally, there is a large body of
+ML literature in which naive Bayes methods have been shown to be
+surprisingly effective.
+
+I say "surprisingly" because, outside of artificial simulation
+settings, the underlying conditional independence assumption is
+basically never true. So why would might it be effective even when
+false?
+1.  We may not have enough data to accurately assess true
+    inter-feature covariance---there are order $m^2$ pairwise
+    relationships between features to estimate, as opposed to only $m$
+    relationships between feature and modeled outcome---so that attempts
+    to do so just lead to overfitting.
+2.  While the NB assumption tends to lead to *overconfident*
+    classifiers---probability scores very near 0 or 1 even when
+    wrong---it still often leads to *accurate* classifiers---most
+    calls aren't wrong, even though those that are may be
+    overconfidently wrong.
+3.  Counterintuitively, you can show mathematically that NB methods
+    will result in very accurate (though overconfident) classifiers
+    assuming that all feature values are in fact *very* strongly
+    correlated with each other within each class ([@rish2001analysis])!
+    -   This may be quite relevant in some gene expression studies!
+    
+
+Motivated by the results of Hess et al., let's try a DLDA model with
+30 features out on the test set:
+
+```{r}
+fsDldaFit = featSelFit(t(hessTrain), hessTrainY,
+                       bindArgs(selectByTTest, m=30), Dlda)
+dldaTestPredClass = predict(fsDldaFit, t(hessTest))$class
+table(dldaTestPredClass, hessTestY)
+```
+
+So 43 out of
+51 test samples classified correctly. This is
+slightly better than we did with either logistic regression or knn,
+but we can't really conclude much from this result since we haven't
+systematically compared the algorithms using the exact same feature
+selections or cross-validation folds.
+

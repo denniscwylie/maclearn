@@ -1,0 +1,715 @@
+---
+title: An R Markdown document converted from "2-unsupervised-R.ipynb"
+output: html_document
+---
+
+$k$-Means Clustering 
+==================================
+
+```{r}
+library(ggplot2)
+theme_set(theme_bw())
+source("../maclearn_utils_2020.R")
+source("load_neves.R")
+```
+
+As a first example of a simple unsupervised ML algorithm, let's
+consider $k$-means clustering ([@macqueen1967some]):
+1.  Initialize $k$ "centroids" $\mathbf{c}_a$
+    -   bold font indicates a vector;
+    -   subscript $a$ denotes which cluster and ranges from 1 to $k$.
+    
+2.  Assign sampling unit with feature vector $\mathbf{x}_i$ to nearest cluster:
+    $$\label{eq:k-means-1}
+       \text{clust}(\mathbf{x}_i) =
+       \underset{a}{\operatorname{arg\,min}} \lVert \mathbf{x}_i - \mathbf{c}_a \rVert$$
+    -   "arg min" with $a$ below it looks at the expression to the
+        right ($\lVert \mathbf{x}_i - \mathbf{c}_a \rVert$ here) and
+        returns the value of $a$ which minimizes it,
+    -   that is, the cluster $a$ such that the centroid
+        $\mathbf{c}_a$ is closest to $\mathbf{x}_i$.
+    
+3.  Reset centroids to mean of associated data:
+    $$\label{eq:k-means-2}
+       \mathbf{c}_a = \frac{1}{\lvert S_a \rvert} \sum\limits_{i \in S_a} \mathbf{x}_i$$
+    -   where the set
+        $$S_a = \lbrace i \mid \text{clust}(\mathbf{x}_i) = a \rbrace$$
+        contains all sampling units $i$ assigned to cluster $a$.
+    -   $|S_a|$ is defined as the number of elements in set $S_a$.
+    
+4.  Repeat steps 2-3 until convergence (i.e. the clusters don't change anymore).
+
+(There are many animations of the $k$-means algorithm in action
+available online---try googling ["k-means clustering animation"](https://lmgtfy.com/?q=k-means+clustering+animation)
+if you're interested in seeing a few of them.)
+Let's apply the algorithm, as implemented in the R function `kmeans`
+to the Neves data set:
+
+```{r}
+set.seed(123)
+kmFit = kmeans(t(nevesExpr), centers=4)
+```
+
+In order to make predictions---meaning cluster assignments here---on
+an arbitrary data set, we'll need to use the `cl_predict` function
+from the `clue` package:
+
+```{r}
+## install.packages("clue")  ## uncomment and run if necessary
+library(clue)  ## for making predictions from kmeans object
+kmPreds = cl_predict(kmFit, t(nevesExpr))
+head(kmPreds)
+```
+
+The predicted values `kmPreds[i]` are the just the cluster
+$\text{clust}(\mathbf{x}_i)$ for each sample $i$ from 1 to $n=12$ in
+the Neves data set. How do they compare with the Neves sample groupings?
+
+```{r}
+ ## table function counts how many combinations there are of the
+ ## discrete values occurring in one or more vectors passed in
+ ## as arguments:
+table(cluster=kmPreds, group=nevesAnnot$group)
+```
+
+So we see that this simple unsupervised clustering approach finds
+clusters mostly---though not completely---the same as the sample
+experimental groupings.
+
+The $k$-means algorithm has an interesting statistical interpretation:
+the solution locally minimizes
+$$\label{eq:k-means-interpretation}
+\sum\limits_{a=1}^k \sum\limits_{i \in S_a} \left(\mathbf{x}_i - \mathbf{c}_a\right)^2$$
+
+which may be regarded as a sum of squared errors if you regard
+centroid $\mathbf{c}_a$ as the predicted feature vector for all
+sampling units $i$ assigned to cluster $a$.
+
+The link between $k$-means clustering and statistics suggested by Eq
+[eq:k-means-interpretation](#eq:k-means-interpretation) can be understood in more depth by
+deriving the method as an asymptotic limiting case of probabilistic
+mixture-of-Gaussians model ([@ghahramani2004unsupervised]) (where
+each Gaussian in the mixture has its own centroid vector
+$\mathbf{c}_a$ but all share a common spherical covariance matrix
+$\sigma^2 \mathbf{\underline{I}}$ and $\sigma$ is vanishingly small).
+
+This derivation explains why, despite being fast and intuitive,
+$k$-means clustering tends to produce (hyper)spherical, equal-sized
+clusters whether they are appropriate or not. In real data sets this
+is often at least somewhat problematic!
+
+Hierarchical Clustering 
+=======================
+
+Probably the most popular unsupervised clustering method in
+bioinformatics is *agglomerative hierarchical clustering*
+([@mary2006introduction; @hastie2009elements]). Hierarchical
+clustering approaches are so named because they seek to generate a
+hierarchy of clusterings of the data---generally represented as
+*dendrogram*, a structure to be discussed shortly.
+
+A hierarchy of clusterings is a set of clusterings with, at the lowest
+level, $n$ distinct clusters---so that no two objects are assigned to
+the same cluster---followed by a clustering with $n-1$ clusters, in
+which exactly two objects are assigned to the same cluster, and then a
+clustering with $n-2$ clusters, and so on, until finally the top level
+has only one cluster to which all $n$ objects are assigned.
+
+Each level of the hierarchy also must be consistent with the level
+below it: this means that the clustering with $m < n$ clusters must be
+the result of taking the clustering with $m+1$ clusters and merging
+two of those $m+1$ clusters together into one. This constraint is what
+makes it possible to represent the hierarchy with a dendrogram; let's
+consider an example:
+
+```{r}
+ ## use hclust function to perform hierarchical clustering in R
+sampleClust = hclust(
+    dist(t(nevesExpr)),    ## will discuss both of these arguments
+    method = "average"     ## below!
+)
+ ## can use generic plot function to generate dendrogram from hclust
+plot(sampleClust)
+```
+
+The different clusterings correspond to different vertical levels in
+this dendrogram. At the very bottom---below all of the lines---each of
+the samples are assigned to its own cluster. Then, at the level
+indicated by the red line here:
+
+```{r}
+plot(sampleClust)
+abline(h=118.5, col="red")  ## draw red horizontal line at y=118.5
+```
+
+we have joined the two samples TBP-2 and TBP-3 together into a single
+cluster, since the lines connecting these two samples are below the
+red line, while each of the other 10 samples is still assigned to its
+own cluster.
+
+We can also extract the cluster identities directly in R without
+bothering to look at plots:
+
+```{r}
+cutree(sampleClust, h=118.5)  ## cut tree at height 118.5
+```
+
+```{r}
+ ## output is vector containing sample cluster labels
+ ## note TBP-2 and TBP-3 are both assigned to cluster 8,
+ ## while all other samples get their own cluster id number
+```
+
+Alternatively, if we try a different height cutoff:
+
+```{r}
+cutree(sampleClust, h=155)
+```
+
+```{r}
+plot(sampleClust)
+abline(h=155, col="red")
+```
+
+We find:
+-   on the far left, cluster **5**, containing TBP-1, TBP-2,
+    and TBP-3, then
+-   cluster **6** containing TRF2-2 and TRF2-3, followed by
+-   cluster **2** containing only mCherry-3,
+-   cluster **1** containing TRF2-1, mCherry-1, mCherry-2,
+-   cluster **3** containing only TAF9-1, and, finally,
+-   on the far right, cluster **4** containing TAF9-2 and TAF9-3.
+
+Often when we want a specific clustering, we want to specify the
+number of clusters instead of trying to figure out what height to cut
+at; this can be done with `cutree` using the `k` argument instead
+of the `h` argument:
+
+```{r}
+cutree(sampleClust, k=6)  ## generates same 6 clusters as h=155 did
+```
+
+Dissimilarity metrics 
+---------------------
+When we first ran `hclust`, we supplied two arguments; the first of
+these was `dist(t(nevesExpr))`. The `t(nevesExpr)` part of this simply
+takes the transpose of `nevesExpr`, but we haven't seen the function
+`dist` before, so let's take a look:
+
+```{r}
+dist(t(nevesExpr))
+```
+
+What we've done here is to compute the *Euclidean distances* of
+each of the 12 samples from each of the other 11 samples. The
+Euclidean distance is defined here as in geometry as the square root
+of the sum of the squared differences in each coordinate of a vector;
+since this is more easily comprehended via math or code than English
+words,
+
+```{r}
+coordinateDifferenceSample1Sample2 = nevesExpr[ , 1] - nevesExpr[ , 2]
+sqrt( sum( coordinateDifferenceSample1Sample2^2 ) )
+```
+
+```{r}
+ ## results in same value as
+as.matrix(dist(t(nevesExpr)))[1, 2]
+```
+
+We want these distances here as a way to measure how dissimilar one
+sample's expression profile is from another (Euclidean distance is not
+the only dissimilarity metric which can be used with `hclust`; you
+can consult the help documentation for `dist` function and its own
+`method` argument to see what other options are available). The
+agglomerative hierarchical clustering algorithm implemented by
+`hclust` uses these quantified dissimarilities between pairs of
+samples to decide, at each step, which two clusters to join together
+from the clustering with `m+1` clusters to form the clustering with
+`m` clusters.
+
+This is easiest to do in the first step, where we start with every
+sample in its own cluster. In this case, we just pick the two samples
+with the smallest dissimilarity value (in this case, TBP-2 and
+TBP-3, with a dissimilarity score of
+113.34
+between them) and join them together into a cluster.
+
+Agglomeration Linkage Methods {#eq:hclust-linkage}
+-----------------------------
+
+After we've created a cluster containing two separate objects a new
+problem confronts us: How do we decide in the next round of clustering
+whether to join together two singleton objects (objects which are in
+their own cluster not containing any other objects) or instead to join
+a singleton object into the two-object cluster we created in our first
+step?
+
+We need a way to assign numeric dissimilarities between
+*clusters* of objects based on the numeric dissimilarities we've
+already calculated between individual objects. In the example I've
+constructed here, I've done this using a very simple approach: The
+dissimilarity between cluster A and cluster B is defined to be the
+average of the dissimarilities between all pairs of objects we can
+form taking one object from cluster A and the other object in the pair
+from cluster B. This is the meaning of the code `method = "average"`
+in the `hclust` call above.
+(Note: we supplied the second argument to `hclust` using the argument name
+`method`; keep in mind this is distinct from the `method` argument
+of the `dist` function referenced above---different functions can
+use the same argument names to mean different things, since they
+operate in different scopes.)
+
+This way of defining dissimilarities between clusters based on
+dissimilarities between objects is known as "average linkage." Many
+alternatives exist; one particularly common one (the default
+`method` for `hclust`) is "complete linkage." Complete linkage
+defines the dissimilarity between cluster A and cluster B as the
+largest dissimilarity value for all pairs of objects taken one from A
+and the other from B:
+
+```{r}
+sampleClust2 = hclust(dist(t(nevesExpr)), method="complete")
+plot(sampleClust2, main="Complete Linkage")
+```
+
+With complete linkage we can see that at the higher levels of the
+dendrogram we obtain different clusterings than we did with average
+linkage. In particular, with average linkage the three samples TBP-1,
+TBP-2, and TBP-3---are the last to be merged together with the
+remainder of the sample set, while with complete linkage this is not
+the case.
+
+Clustered Heatmaps 
+------------------
+
+```{r}
+## install.packages("pheatmap")  ## uncomment and run if necessary
+library(pheatmap)
+ ## usually most interested in expression levels relative to mean:
+heatData = nevesExpr - rowMeans(nevesExpr)
+ ## often want to limit dynamic range heatmap considers so that
+ ## color palette range is not dominated by a few extreme values:
+heatData[heatData > 2] = 2; heatData[heatData < -2] = -2
+ ## pheatmap is not a grammar-of-graphics style plotting function:
+ ## specify all options as arguments to single function call
+ ## intead of building plot up in modular fashion:
+pheatmap(
+    heatData,
+    color = colorRampPalette(c(
+        "dodgerblue", "lightskyblue",
+        "white",
+        "lightgoldenrod", "orangered"
+    ))(100),
+    clustering_method = "average",
+    show_rownames = FALSE
+)
+```
+
+Predicting Clusters from Hierachical Clustering 
+-----------------------------------------------
+So\...how do we predict the cluster assignment for a new sampling unit
+with feature vector $\mathbf{x}$ at each level of the clustering
+hierarchy?
+
+We don't. As I mentioned in the introduction, hierarchical clustering
+is one of the few machine learning algorithms which doesn't really fit
+into the "algorithms to learn algorithms to predict" scheme.
+
+Principal Component Analysis 
+============================
+
+(NOTE: in discussion of PCA, I will reserve symbol $x$ for PCA
+*scores* as opposed to feature values, to accord with R's use of
+`pca$x`. I will shift *for this section only* to use of $z$
+for feature values. I will make one exception at the end in
+defining the `extractPCs` function, as it will be used again in
+later sections where I will return to use of $x$ for feature values.)
+There are many different ways to describe the underyling idea of PCA ([@roweis1999unifying; @izenman2008modern]);
+here's one: PCA fits a series of *principal components* to model
+the expression levels $z_{ig}$ of all genes $g$ across all samples
+$i$. We'll start with a single principal component (PC1) model:
+$$\label{eq:single-pc-model}
+z_{ig} = \mu_g + x_{i1} r_{g1} + e^{(1)}_{ig}$$
+
+where:
+-   $\mu_g = \frac{1}{n} \sum_i z_{ig}$ is the mean expression level
+    of gene $g$,
+-   $x_{i1}$ is the "score" of sample $i$ on PC1,
+-   $r_{g1}$ is the "loading" of gene $g$ on PC1, and
+-   $e^{(1)}_{ig}$ is the error residual for gene $g$ on sample $i$
+    using PC1 model.
+
+Fitting PC1 thus requires estimating $x_{i1}$ for all samples $i$ and
+$r_{g1}$ for all genes $g$. This is generally done so as to minimize
+the sum of squared residuals
+$\sum_{i,g} \left( e^{(1)}_{ig} \right)^2$ (PCA is another
+least-squares algorithm). It so happens that there is a beautifully
+elegant and efficient algorithm solving just this problem via
+something known in linear algebra as singular value decomposition
+(SVD) implemented in the R function `prcomp`:
+
+```{r}
+ ## use prcomp function for PCA in R
+ ## on transposed version of nevesExpr, t(nevesExpr),
+ ## since prcomp assumes variables (genes) are in columns, not rows
+ ## * z_ig = nevesExpr[g, i] = t(nevesExpr)[i, g]
+pca = prcomp(t(nevesExpr))
+class(pca)
+```
+
+```{r}
+is.list(pca)
+```
+
+```{r}
+names(pca)
+```
+
+```{r}
+ ## the PCA scores x_i1 for samples are found in pca$x:
+head(pca$x[ , 1, drop=FALSE])  ## drop=FALSE: keep as matrix w/ one column
+```
+
+```{r}
+ ## the PCA loadings r_g1 for genes are found in pca$rotation:
+head(pca$rotation[ , 1, drop=FALSE])
+```
+
+You might notice that I extracted only the first column from both
+`pca$x` and `pca$rotation`. This is because these matrices
+contain PCs beyond PC1. For instance, the second column of each of
+these matrices corresponds to PC2, which is defined by
+$$\label{eq:two-pc-model}
+z_{ig} = \mu_g + x_{i1} r_{g1} + x_{i2} r_{g2} + e^{(2)}_{ig}$$
+
+where PC1 is obtained from the single-PC model and PC2 is then again
+fit to minimize the remaining $\sum_{i,g} \left( e^{(2)}_{ig} \right)^2$.
+
+This process can be repeated to obtain higher order PCs as well; in
+general, the $k^{\text{th}}$ PC has
+-   scores $x_{ik}$ which can be found in the R object `pca$x[i, k]` and
+-   loadings $r_{gk}$ stored in `pca$rotation[g, k]`
+
+and minimizes the squared sum of the error residuals
+$$\label{eq:k-pc-model-residual}
+e^{(k)}_{ig} = z_{ig} - \mu_g - \sum_{j=1}^k x_{ij} r_{gj}$$
+
+It is worth noting that after fitting $n$ PCs (recall $n$ is the
+number of samples, 12 here), there is no error
+left---that is, $e^{(n)}_{ig}=0$---so that we will have a perfect fit
+for $z_{ig}$:
+$$\begin{aligned}
+z_{ig} &=  \mu_g + \sum_{j=1}^n x_{ij} r_{gj} \\
+ &= \mu_g + \left[ \mathbf{\underline{X}} \mathbf{\underline{R}}^{\text{T}} \right]_{ig}
+\end{aligned}$$
+where in Eq [eq:matrix-product-notation-pca](#eq:matrix-product-notation-pca) we have switched
+over to matrix notation. This can be confirmed in R via:
+
+```{r}
+pcaFit = rowMeans(nevesExpr) + t( pca$x %*% t(pca$rotation) )
+ ## have to transpose pca$x %*% t(pca$rotation) above b/c nevesExpr is t(z)
+nevesExpr[1:3, 1:3]
+```
+
+```{r}
+pcaFit[1:3, 1:3]  ## same thing!
+```
+
+By now you may be wondering what we do with all of these sample scores
+$x_{ik}$ and gene loadings $r_{gk}$. Well, the first thing we usually
+do is make a PCA plot by plotting $x_{i2}$ (which we usually label as
+simply "PC2") on the vertical axis against $x_{i1}$ ("PC1") on the
+horizontal axis:
+
+```{r}
+ ## set up data.frame pcaData for ggplot...
+pcaData = data.frame(pca$x[ , 1:2])
+ ## add in sample annotation info
+pcaData$group = nevesAnnot[rownames(pcaData), "group"]
+ ## and sample names
+pcaData$sample = rownames(pcaData)
+ ## make sure ggplot2 library is loaded
+library(ggplot2)
+ ## bw theme...
+theme_set(theme_bw())
+gg = ggplot(pcaData, aes(x=PC1, y=PC2, color=group, label=sample))
+gg = gg + geom_point(size=2.5, alpha=0.75)
+colVals = c("darkgray", "goldenrod", "orangered", "lightseagreen")
+gg = gg + scale_color_manual(values=colVals)
+print(gg)
+```
+
+This shows us something interesting: despite PCA knowing nothing about
+the sample groupings, it has fit PC1 so as to split the TBP
+experimental group apart from all others (in the sense that the TBP
+group samples have large positive scores $x_{i1}$ while all other
+samples have negative PC1 scores). This tells us that, in some sense,
+TBP is the most different sample group relative to all of the others.
+
+Modeling Expression Levels with First PC (or Two) 
+-------------------------------------------------
+
+I introduced PCA as a way to model expression levels using
+multiplicative factors of sample scores and gene loadings. You might
+well wonder how good it is as such a model, so let's go ahead and look
+at the expression patterns (sometimes called "profiles") of a gene
+or two.
+
+Let's start with the gene TBP:
+
+```{r}
+z = t(nevesExpr)
+geneIndex = which(rownames(nevesExpr) == "Tbp")
+tbpData = data.frame(
+    pc1model = mean(z[ , "Tbp"]) +
+               pca$x[ , 1] * pca$rotation[geneIndex, 1],
+    actual = z[ , "Tbp"],
+    group = nevesAnnot$group
+)
+tbpPlot = ggplot(tbpData, aes(pc1model, actual, color=group))
+tbpPlot = tbpPlot + geom_point()
+tbpPlot = tbpPlot + scale_color_manual(values=colVals)
+tbpPlot = tbpPlot + xlab("PC1 modeled TBP expression")
+tbpPlot = tbpPlot + ylab("Actual TBP expression")
+print(tbpPlot)
+```
+
+The PC1 (only) model (calculated based on Eq
+[eq:single-pc-model](#eq:single-pc-model) above) for TBP expression appears to do a
+pretty job! But perhaps we should be suspicious that this performance
+may not be totally representative, given that we noted that PC1 split
+the "TBP" sample group out from the other samples. Indeed, recall
+that this sample group is defined by the presence of an experimental
+RNAi transgene for TBP, and indeed we see that expression of the TBP
+gene itself is quite significantly reduced in this sample group
+relative to all others.
+
+So let's consider a different gene, CecA2:
+
+```{r}
+geneIndex = which(rownames(nevesExpr) == "CecA2")
+ceca2Data = data.frame(
+    pc1model = mean(z[ , "CecA2"]) +
+               pca$x[ , 1] * pca$rotation[geneIndex, 1],
+    actual = z[ , "CecA2"],
+    group = nevesAnnot$group
+)
+ceca2Plot = ggplot(ceca2Data, aes(pc1model, actual, color=group))
+ceca2Plot = ceca2Plot + geom_point()
+ceca2Plot = ceca2Plot + scale_color_manual(values=colVals)
+ceca2Plot = ceca2Plot + xlab("PC1 modeled CecA2 expression")
+ceca2Plot = ceca2Plot + ylab("Actual CecA2 expression")
+print(ceca2Plot)
+```
+
+So\...PC1 model does not do so well this time! It can't, because
+`pca$x[ , 1]` assigns the most extreme values to samples from the
+TBP group, while the actual expression levels of CecA2 in the TBP
+sample group are quite middle-of-the-road. But don't despair, we can
+always try PC1+PC2 model as defined by Eq [eq:two-pc-model](#eq:two-pc-model):
+
+```{r}
+ceca2Data$pc1and2model = mean(z[ , "CecA2"]) +
+                         pca$x[ , 1] * pca$rotation[geneIndex, 1] +
+                         pca$x[ , 2] * pca$rotation[geneIndex, 2]
+ceca2Plot = ggplot(ceca2Data, aes(pc1and2model, actual, color=group))
+ceca2Plot = ceca2Plot + geom_point()
+ceca2Plot = ceca2Plot + scale_color_manual(values=colVals)
+ceca2Plot = ceca2Plot + xlab("PC1+PC2 modeled CecA2 expression")
+ceca2Plot = ceca2Plot + ylab("Actual CecA2 expression")
+print(ceca2Plot)
+```
+
+Maybe not perfect, but definitely much better! In case you're curious
+as to why I picked CecA2 in particular, it is the gene with the
+largest positive loading on PC2 (as you can confirm by running
+`which.max(pca$rotation[ , 2])` if you're so inclined). Thus we
+might have expected it to be a gene for which the PC1+PC2 model would
+be notably better than a PC1-only model.
+
+Percent Variation Explained by PC $k$ 
+---------------------------------------------------
+
+This leads us to a generally ill-understood point in PCA:
+quantification of how much each PC contributes to modeling the gene
+expression values. Perhaps you recall the use of $R^2$ to characterize
+the quality of fit for linear models (regression, ANOVA, etc.) in
+statistics; we can use this idea in PCA as well, but we have to decide
+what to do about the fact that it is a truly *multivariate*
+model: We are simultaneously modeling thousands of genes!
+
+The general approach taken is more or less the simplest generalization
+of the $R^2$ idea available. Recalling that $R^2$ gives the "percent
+of variation explained," quantified as the percentage reduction in
+sum of squared residuals, we first define
+$$\begin{aligned}
+\sigma^2_0 &= \frac{1}{n-1} \sum_{i, g} \left( z_{ig} - \mu_g \right)^2 \\
+\sigma^2_k &= \frac{1}{n-1} \sum_{i, g} \left( e^{(k)}_{ig} \right)^2
+\end{aligned}$$
+
+where the $k^{\text{th}}$ matrix of error residuals $e^{(k)}_{ig}$ is
+defined by Eq [eq:k-pc-model-residual](#eq:k-pc-model-residual). We can regard Eq
+[eq:pca-sigmaSq0](#eq:pca-sigmaSq0) as just Eq [eq:pca-sigmak](#eq:pca-sigmak) with $k=0$ if
+we accept the natural definition
+$$e^{(0)}_{ig} = z_{ig} - \mu_g$$
+for the error residuals of a "no-PC model." Then we can also rewrite
+Eq [eq:k-pc-model-residual](#eq:k-pc-model-residual) for any $k > 0$ as as:
+$$e^{(k)}_{ig} = e^{(k-1)}_{ig} - x_{ik} r_{gk}$$
+
+Let's take a second to do a few of these calculations in R, using
+the name `resid0[i, g]` to represent $e^{(0)}_{ig}$, `resid1[i, g]` for
+$e^{(1)}_{ig}$, etc.:
+
+```{r}
+resid0 = t( nevesExpr - rowMeans(nevesExpr) )  ## matrix of residuals e^(0)_ig
+ ## now use outer function to construct matrix with i, g entry
+ ##  pca$x[i, 1] * pca$rotation[g, 1]
+ ## and subtract this from resid0 to obtain resid1:
+resid1 = resid0 - outer(pca$x[ , 1], pca$rotation[ , 1])
+ ## resid1 contains error residuals e^(1)_ig after fitting PC1-only model
+resid2 = resid1 - outer(pca$x[ , 2], pca$rotation[ , 2])
+ ## resid2 contains error residuals e^(2)_ig from PC1+PC2 model
+```
+
+and, using `sigmaSq0` to represent $\sigma^2_0$, `sigmaSq1` for
+$\sigma^2_1$, etc.:
+
+```{r}
+n = ncol(nevesExpr)  ## number of samples (12)
+sigmaSq0 = sum(resid0^2) / (n-1)
+sigmaSq1 = sum(resid1^2) / (n-1)
+sigmaSq2 = sum(resid2^2) / (n-1)
+```
+
+Now the variance explained by PC $k$ is defined to be the overall
+reduction in variance associated with adding PC $k$ into our model,
+and is given by
+$$\label{eq:pc-k-r2}
+\Delta \sigma^2_k = \sigma^2_{k-1} - \sigma^2_k$$
+and the "fraction of variation" explained by PC $k$ is finally
+$$\label{eq:pct-var-pc-k}
+\frac{\Delta \sigma^2_k}{\sigma^2_0} =
+\frac{\Delta \sigma^2_k}{\sum_{k=1}^n{\Delta \sigma^2_k}}$$
+where the right-hand side of Eq [eq:pct-var-pc-k](#eq:pct-var-pc-k) holds because,
+as we verified above, the variance $\sigma^2_n$ remaining after
+fitting all $n$ PCs is 0; that is
+$$\begin{aligned}
+0 &= \sigma^2_n \\
+  &= \sigma^2_0 - \left( \sigma^2_0 - \sigma^2_1 \right) - \left( \sigma^2_1 - \sigma^2_2 \right) - \cdots - \left( \sigma^2_{n-1} - \sigma^2_n \right) \\
+  &= \sigma^2_0 - \sum_{k=1}^n \left( \sigma^2_{k-1} - \sigma^2_k \right) \\
+  &= \sigma^2_0 - \sum_{k=1}^n{\Delta \sigma^2_k} \\
+\sigma^2_0 &= \sum_{k=1}^n{\Delta \sigma^2_k}
+\end{aligned}$$
+The output `pca` from `prcomp` stores the quantities
+$\sqrt{\Delta \sigma^2_k}$ in the field `pca$sdev`:
+
+```{r}
+ ## let's compare:
+sqrt(sigmaSq0 - sigmaSq1)
+```
+
+```{r}
+pca$sdev[[1]]  ## same thing!
+```
+
+```{r}
+ ## what about the second PC?
+sqrt(sigmaSq1 - sigmaSq2)
+```
+
+```{r}
+pca$sdev[[2]]  ## same thing!
+```
+
+```{r}
+ ## fraction of variation explained by PC1, "from scratch":
+(sigmaSq0 - sigmaSq1) / sigmaSq0
+```
+
+```{r}
+ ## fraction of variation explained by PC1, using pca$dev:
+pca$sdev[[1]]^2 / sum(pca$sdev^2)  ## same thing!
+```
+
+```{r}
+ ## fraction of variation explained by PC2, from scratch:
+(sigmaSq1 - sigmaSq2) / sigmaSq0
+```
+
+```{r}
+ ## fraction of variation explained by PC2, using pca$dev:
+pca$sdev[[2]]^2 / sum(pca$sdev^2)  ## same thing!
+```
+
+So we see that the first PC in the `pca` model explains
+34.6% of the overall
+gene expression variance, while the second PC explains an additional
+20.2% of overall gene
+expression variance. Let's update the axis labels of our PCA plot to
+include this information:
+
+```{r}
+pctVar = 100 * pca$sdev^2 / sum(pca$sdev^2)
+gg = gg + xlab(
+        paste0("PC1 (", round(pctVar[[1]], 1), "% explained var.)"))
+gg = gg + ylab(
+        paste0("PC2 (", round(pctVar[[2]], 1), "% explained var.)"))
+print(gg)
+```
+
+Keep in mind that these percentages reflect the fraction of variance
+explained across *all* genes; some genes (e.g., TBP) may be much
+better explained by PC1 alone than are other genes (e.g., CecA2)!
+
+Extracting Sampling Unit Scores {#eq:pca-predictions}
+-------------------------------
+
+Here is a function for learning the PCs from a training set and
+returning a function `extractor` for assessing the sampling unit
+scores for a test set `newdata`:
+
+```{r}
+ ## arguments to extractPCs
+ ## - x is matrix or data.frame of feature values
+ ## - m is number of principal component features to extract
+extractPCs = function(x, m, ...) {
+     ## assume x is samples-in-rows, genes-in-columns format!
+     ## training-set-estimated mean expression of each gene:
+    mu = colMeans(x)
+    pca = prcomp(x, center=TRUE, scale.=FALSE)
+     ## extract matrix needed to project new data onto first m extracted PCs:
+    projection = pca$rotation[ , 1:m, drop=FALSE]
+     ## define extraction function to extract features from new data:
+    extractor = function(newdata) {
+         ## sweep out training-set-estimated gene means:
+        newdata = sweep(newdata, 2, mu, '-')
+        return(newdata %*% projection)
+    }
+     ## return the function "extractor" which can be applied to newdata;
+     ## this function yields coordinates of samples in newdata in PC-space
+     ## learned from the training data passed in as x argument.
+    return(extractor)
+}
+```
+
+If you look at the math implemented by `extractPCs`, you'll find that it
+assigns to a sampling unit with feature vector $\mathbf{z}$ a PC-$k$ score of:
+$$\label{eq:pca-predict-score}
+\sum_g \left(z_g - \mu_g\right) r_{gk}$$
+which is by definition the $k^{\text{th}}$ component of the vector
+$\mathbf{\underline{R}}^{\text{T}}(\mathbf{z}-\boldsymbol{\mu})$.
+
+Note that there are two distinct ways in which PCA is, in a technical
+sense, an "algorithm which learns to predict":
+1.  It can be used to predict gene expression values (via the
+    restriction of the sum in Eq [eq:n-pc-model-residual](#eq:n-pc-model-residual) to the
+    desired number of PCs), and
+2.  it can be used to "predict" (we would more commonly say
+    *extract*) the location of a new sampling unit in the PC space
+    defined by the training set via Eq [eq:pca-predict-score](#eq:pca-predict-score).
+I'll note that while both of these modes of prediction differ somewhat
+from the ordinary language meaning of prediction, the second does make
+PCA a very useful *feature extraction* method, as we will see a
+bit later!
+

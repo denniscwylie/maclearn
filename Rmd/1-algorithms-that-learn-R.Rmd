@@ -1,0 +1,234 @@
+---
+title: An R Markdown document converted from "1-algorithms-that-learn-R.ipynb"
+output: html_document
+---
+
+Algorithms That Learn To Predict 
+================================
+
+Machine learning (ML) refers to the use of algorithms which can learn
+from data. The inputs to a ML algorithm will generally be some sort of
+data set---which I will refer to as the *training data*---and the
+output will usually be another algorithm, which I will call a
+*fit model*, or sometimes just a *fit* if I'm feeling lazy.
+-   ML algorithm : training data $\rightarrow$ fit model
+
+The fit model itself also takes data as input, and generally requires
+that the data provided to it must be very similar in nature to that
+provided to the ML algorithm as training data: For example, assuming
+the data sets in question are represented in table form, the data
+provided to the fit model must usually have all or almost all of the
+same columns as the training data set did. However, the output from
+the fit model is usually much simpler, often consisting of a predicted
+*numeric value* or *categorical label* for each individual
+sampling unit of the data set.
+-   Fit model : test data $\rightarrow$ predicted values
+
+It is often convenient to package an ML algorithm up into a
+`function`; this is the most common strategy employed by ML
+algorithms implemented in R. A classic example is the `lm` function
+in R:
+
+```{r}
+set.seed(123)
+n = 20
+ ## generate some random data for two variables:
+predictor1 = rnorm(n)
+predictor2 = rnorm(n)
+ ## now set a third variable equal to a weighted sum of those
+ ## two variables plus a random error term:
+output = 2*predictor1 + predictor2 + rnorm(n)
+ ## bundle up the three variables composing our data set into a
+ ## data.frame object:
+allData = data.frame(p1=predictor1, p2=predictor2, out=output)
+ ## split allData into training and test sets:
+trainData = allData[1:10, ]
+testData = allData[11:20, ]  ## should not overlap trainData!
+ ## now train model using only trainData:
+fitModel = lm(out ~ p1 + p2, data=trainData)
+```
+
+Now we can use the `fitModel` to make predictions on rows 11--20 of
+`allData`; in R, this is usually, though not universally, done by
+calling the `predict` function with
+1.  the object representing the fit model as first argument and
+2.  the test data set---usually in the form of a `data.frame`---as
+    the second argument:
+
+```{r}
+ ## generate predictions for test data:
+predictions = predict(fitModel, testData)
+library(ggplot2); theme_set(theme_bw())
+ ## plot actual values of out column against predicted values
+ ## for the test data using ggplot2::qplot
+qplot(predictions, testData$out)
+```
+
+This an example of *supervised learning*, in which one of the
+variables in the training data set (`out` in this case) is treated
+as an output to be predicted using the others. The test set does not
+actually need to have this variable present to make predictions:
+
+```{r}
+predictions2 = predict(fitModel, testData[ , c("p1", "p2")])
+ ## these predictions should be the same as before:
+all(predictions2 == predictions)
+```
+
+Thus, in supervised learning approaches the fit model requires only a
+subset of the variables present in the training data to be present in
+the test data in order to make predictions.
+
+In *unsupervised learning* this is not the case, and we must
+generally have all variables from the training data also present in
+any test data that we wish to make predictions on. What is this
+"unsupervised learning", you ask, and what might it be used to
+predict? Let's consider an example to make things more concrete:
+
+```{r}
+ ## need clue library to make predictions from kmeans fit
+ ## install.packages("clue")  ## uncomment and run if necessary
+library(clue)
+ ## use k-means clustering algorithm to fit 2 clusters to training data
+kmeansFit = kmeans(trainData, 2)
+ ## inspect kmeansFit object in R terminal:
+kmeansFit
+```
+
+```{r}
+ ## use clue::cl_predict instead of ordinary predict with kmeans
+ ## to predict which cluster each test datum is in
+kmPredictions = cl_predict(kmeansFit, testData)
+kmPredictions
+```
+
+```{r}
+ ## two clusters in this case correspond to low and high values of "out":
+qplot(factor(kmPredictions), testData$out, geom="boxplot")
+```
+
+As seen in this example, unsupervised learning algorithms try to find
+some latent structure in the training data---such as the carving of
+the variable space (frequently called *feature space* in ML) into
+two disjoint clusters done by `kmeans`, about which more will be
+said later.
+Many unsupervised learning algorithms, including `kmeans`, produce
+fit models which can be used to determine how test data would fit into
+the learned latent structure; for instance, here we were able to
+assign each test datum to one of the two clusters learned from the
+training data set. There are some unsupervised learning approaches
+which generate fit models which are not immediately equipped to make
+test set predictions, however---hierarchical clustering and tSNE come
+to mind here---which can limit their utility in some situations.
+
+Data 
+====
+
+Machine learning---perhaps I should lose the qualifier and just say
+learning---isn't much without data!
+
+We're going to see how machine learning algorithms work by applying
+them to both real and simulated data. It's critical to play with real
+data in learning machine learning, as it is very difficult to
+replicate many important features of real data via
+simulation. Simulation does play an important role in ML as well,
+however: only with simulated data can we check how our algorithms
+perform when all of the assumptions that underlie their derivation are
+truly met. It is also frequently much easier to "turn the knobs" on
+various data set properties of interest---like the number of sampling
+units $n$, the number of features $m$, the degree of correlation
+between features, etc.---with simulated data than in the lab or the
+external world!
+
+We will consider two real gene expression data sets:
+1.  an RNA-seq data set downloaded from Gene Expression Omnibus
+    (accession
+    [GSE120430](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE120430))
+    analyzing transcriptional targets of core promoter factors in
+    Drosophila neural stem cells ([@neves2019distinct]).
+2.  a microarray (!) data set from 2006 collected to predict
+    sensitivity to preoperative chemotherapy using expression levels
+    measured in fine-needle breast cancer biopsy specimens
+    ([@hess2006pharmacogenomic]).
+
+I'll defer further discussion of the Hess data set until we get to
+supervised analysis methods.
+
+In order to read in the data from file, I'm going to define a
+convenience function resetting some of the defaults of the
+`read.table` function:
+
+```{r}
+rt = function(f) {
+    read.table(f, sep="\t", row.names=1, header=TRUE,
+               check.names=FALSE, comment.char="", quote="")
+}
+```
+
+Now let's use this function to read the Neves data set, along with a
+file containing Drosophila melanogaster gene annotations, in from the
+files included here in the github project:
+
+```{r}
+nevesExpr = log2(rt("../data/gse120430_deseq_normalized.tsv.gz") + 1)
+nevesExpr[1:5, 1:5]
+```
+
+```{r}
+ ## (note that gene expression matrix files are usually provided
+ ##  using genes-in-rows format)
+ ## simplify nevesExpr by removing genes with no data:
+nevesExpr = nevesExpr[rowSums(nevesExpr) > 0, ]
+ ## by contrast, sample annotation files generally follow the
+ ## older statistics convention of sampling units-in-rows
+nevesAnnot = rt("../data/gse120430_sample_annotation.tsv")
+dmGenes = rt("../data/d_melanogaster_gene_annotations.saf.gz")
+```
+
+Let's take a quick look at `nevesAnnot`:
+
+```{r}
+nevesAnnot
+```
+
+To minimize the chance of any bugs in our analysis code, it is useful
+to align the rows of the sample annotation data (and gene annotation
+data, if we have it) to the columns of the expression matrix:
+
+```{r}
+ ## align sample annotations to expression data:
+nevesAnnot = nevesAnnot[colnames(nevesExpr), , drop=FALSE]
+ ## align dmGenes to expression data:
+dmGenes = dmGenes[rownames(nevesExpr), ]
+```
+
+The `group` column indicates whether each sample is in group
+expressing the control (mCherry) or one of the experimental RNAi
+transgenes (TAF9, TBP, or TRF2).
+
+The sample names in the expression data and sample annotations are
+Gene Expression Omnibus accession ids; we'll replace these with more
+descriptive names based on the grouping information in the sample
+annotations:
+
+```{r}
+ ## use more descriptive names for samples
+betterSampleNames = paste0(nevesAnnot$group, "-", 1:3)
+colnames(nevesExpr) = betterSampleNames
+rownames(nevesAnnot) = betterSampleNames
+```
+
+Finally, because the descriptive gene names for the measured
+Drosophila genes are in one-to-one correspondence with the Flybase
+gene ids used to label the rows in the file
+`data/gse120430_deseq_normalized.tsv.gz`, we'll swap them
+out:
+
+```{r}
+ ## use more descriptive names for genes
+rownames(nevesExpr) = dmGenes$GeneName
+```
+
+The code shown above for loading in the Neves data set is also
+contained in the file `load_neves.R`.
+

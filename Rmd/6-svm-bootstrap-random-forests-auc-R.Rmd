@@ -1,0 +1,753 @@
+---
+title: An R Markdown document converted from "6-svm-bootstrap-random-forests-auc-R.ipynb"
+output: html_document
+---
+
+Support Vector Machines 
+=======================
+
+```{r}
+set.seed(123)
+library(caret)
+library(ggplot2)
+theme_set(theme_bw())
+source("../ggfuntile.R")
+source("../maclearn_utils_2020.R")
+source("load_hess.R")
+twoProbeData = t(hessTrain)[ , c("205548_s_at", "201976_s_at")]
+colnames(twoProbeData) =
+        probeAnnot[colnames(twoProbeData), "Gene.Symbol"]
+```
+
+Linear models, including logistic regression and DLDA, are very useful
+in many contexts but do have some characteristics which can be
+limiting. *Support vector machines*, or SVMs
+([@cortes1995support; @hastie2009elements]), are a type of
+supervised classifcation algorithm which address two particular
+limitations:
+1.  The parameters fit by classical linear classification algorithms
+    are generally sensitive to extremely easy-to-call sampling units
+    -   (correctly called sampling units whose feature vectors are
+        very far from the decision boundary)
+    -   even when a more accurate classifier might result from
+        parameters which move these outlier probabilities "in the wrong
+        direction"
+    -   but not far enough to change the final classification made.
+    
+2.  Linearity of response is a very strong and often unrealistic
+    assumption; many real-world response patterns are highly nonlinear.
+
+The term "support vectors" in the name SVMs refers to the feature
+vectors corresponding to samples which are close to being on the wrong
+side of the decision boundary; for a nice illustration check out
+<https://en.wikipedia.org/wiki/Support_vector_machine#/media/File:SVM_margin.png>.
+
+SVM models are fit by positioning the decision boundary so as to keep
+the support vectors as far on the right sides as possible; the
+parameters defining the decision boundary thus ultimately depend only
+on the sampling units corresponding to the support vectors, thus
+mitigating point 1 above.
+
+Point 2 can also be addressed in the SVM framework using a
+mathematical technique known as the "kernel trick." The math here is
+beyond the scope of these notes, but the core idea is that you first
+apply a nonlinear transformation to the data matrix and then apply SVM
+in the transformed coordinates, kind of like when we did feature
+extraction prior to fitting a knn model. The trick is that certain
+special transformations lead to model fitting problems which may be
+described in terms of the *un*transformed coordinates in
+intuitively interesting and useful ways.
+
+(What makes this so tricky is that while it has been proven that there
+do indeed exist particular transformations that lead to the problems
+nicely describable as modified versions of the original SVM problem in
+untransformed coordinates, the actual transformations
+themselves---which are very complicated---aren't actually needed in
+doing the computations, just the modified problem description in the
+original feature space!)
+
+We'll focus on a specific class of transformations: those which
+replace the standard dot products appearing in the mathematical
+expressions composing the original SVM problem with so-called "radial
+basis function" (RBF) kernels.
+
+We'll do this in R using the `kernlab` library; just as we did with
+`lm` and `glm`, we'll define a convenience function for using the
+`ksvm` function from this library:
+
+```{r}
+## install.packages("kernlab")  ## uncomment and run if necessary
+ ## arguments to svmFitter:
+ ## - x is matrix or data.frame of feature values
+ ## - y is factor of classification labels
+ ## - C is cost-of-constraints violation parameter associated with
+ ##   feature vectors getting too close to wrong side of decision
+ ##   boundary
+ ## - sigma is inverse width parameter for radial basis function;
+ ##   higher values of sigma imply more local/less global fits
+svmFitter = function(x, y, C=1, sigma=0.05, ...) {
+    require(kernlab)
+    ksvm(y ~ .,
+         data = data.frame(x, y=y, check.names=FALSE),
+         C = C,
+         kpar = list(sigma=sigma),
+         prob.model = TRUE,
+         ...)
+ ## prob.model=TRUE argument above supplements traditional SVM algorithm
+ ## to allow probabilistic predictions as well as discrete classifications
+}
+```
+
+While SVM models are somewhat more complex than the simplicity that is
+knn, revisiting our two probe set contour plotting strategy using a
+range of `sigma` parameter values reveals a striking similarity in
+the types of decision boundaries learned by the methods:
+
+```{r}
+twoProbeSvmFitSig0p25 = svmFitter(twoProbeData, hessTrainY, sigma=0.25)
+predictionContour(twoProbeSvmFitSig0p25,
+                  twoProbeData, hessTrainY, "sigma = 0.25")
+```
+
+Increasing the `sigma` parameter creates a more local---and in this
+case, likely more overfit---SVM model (similar to *decreasing*
+the number $k$ of nearest neighbors in a knn model):
+
+```{r}
+twoProbeSvmFitSig1p25 = svmFitter(twoProbeData, hessTrainY, sigma=1.25)
+predictionContour(twoProbeSvmFitSig1p25,
+                  twoProbeData, hessTrainY, "sigma = 1.25")
+```
+
+And increasing `sigma` still further\...
+
+```{r}
+twoProbeSvmFitSig6p25 = svmFitter(twoProbeData, hessTrainY, sigma=6.25)
+predictionContour(twoProbeSvmFitSig6p25,
+                  twoProbeData, hessTrainY, "sigma = 6.25")
+```
+
+While SVM models using RBF kernels produce classifiers with somewhat
+similar properties to knn, you can see that the decision boundaries
+tend to be smoother. Why might this be?
+
+The knn approach doesn't care whether the $(k+1)^{\text{th}}$ nearest
+neighbor is just ever so slightly farther away than the
+$k^{\text{th}}$, or whether the $k^{\text{th}}$ nearest neighbor is 10
+times farther away than the the $(k-1)^{\text{th}}$, but just gives
+equal weight to the closest $k$ and zero weight to everything else.
+
+In contrast, the SVM-with-RBF-kernel approach can be seen as making
+predictions using on a *weighted* sum of the known
+classifications for nearby training data, with the weightings based on
+a smooth function of the distance from training feature vector to the
+feature vector to be classified.
+
+```{r}
+set.seed(123)            ## for replicability
+pcaSvmFit = featExtFit(
+    x = t(hessTrain),
+    y = hessTrainY,
+    extractionLearner = bindArgs(extractPCs, m=5),
+    fitter = bindArgs(svmFitter, sigma=0.25)
+)
+ ## b/c SVM is not primarily a probabilistic classifier
+ ## predict method for kvsm objects returns class labels by default
+pcaSvmTestPredictionClass = predict(
+    pcaSvmFit,
+    data.frame(t(hessTest), check.names=FALSE)
+)
+table(pcaSvmTestPredictionClass, hessTestY)
+```
+
+We'll assess the performance of this classifier in the training set
+using `caret::train` as well, but instead of avoiding resubstitution
+bias using cross-validation we'll try an alternative resampling
+technique known as *bootstrapping*.
+
+Bootstrapping 
+=============
+
+Machine learning is generally less concerned with questions about
+whether the internal structure of a model is correct, necessary or
+interpretable than is classical statistics, but there are still times
+when we'd like to be able to characterize the uncertainty or
+repeatability associated with an estimated parameter value.
+
+Put another way: if we had another data set generated in the same way
+as the one we do have, how similar would the value we estimated for
+this or that parameter be to what we get using the actually realized
+training data? Do we expect to get basically the same value or
+something wildly different?
+
+For linear models, the literature abounds with useful analytical
+results on confidence intervals, credible intervals, and the like. But
+for other types of modeling strategies, this is rarely the case!
+
+If gathering data were cheap and easy, we could just go ahead and
+replicate
+-   the experiment which generated the data and then
+-   re-fit the model to the newest round of data
+
+many times to empirically estimate the distribution of fit model
+parameters.
+
+*Bootstrapping* is a clever approach to *simulate* such
+replication using just the one data set we actually have
+([@tibshirani1993introduction]). The bootstrapping process
+consists of:
+1.  Generate a case-resampled data set with feature matrix
+    $\mathbf{\underline{X}}^{\text{boot}}$ and outcome vector
+    $\mathbf{y}^{\text{boot}}$ by drawing $n$ random integers
+    $1 \leq r_i \leq n$ *with replacement* and setting
+    $$\begin{aligned}
+       x_{ig}^{\text{boot}} &= x_{r_i g} \\
+       y_i^{\text{boot}} &= y_{r_i}
+      \end{aligned}$$
+    Note that the $r_i$ will generally not be unique: $r_i$ and $r_j$
+    may be the same sampling unit even when $i \neq j$, so that the same
+    sampling unit may be included multiple times in the resampled data
+    set!
+2.  Fit desired model to resampled feature matrix
+    $\mathbf{\underline{X}}^{\text{boot}}$ and outcome vector
+    $\mathbf{y}^{\text{boot}}$ to learn parameters
+    $\mathbf{y}^{\text{boot}}$
+    -   $\boldsymbol{\theta}$ is just way of writing set of all
+        parameters needed by model pulled together into one big vector,
+        while
+    -   the "hat" on top of $\hat{\boldsymbol{\theta}}$ indicates
+        that we are talking about a specific data-derived estimate of the
+        parameter values $\boldsymbol{\theta}$, and
+    -   superscript "boot" on $\hat{\boldsymbol{\theta}}^{\text{boot}}$
+        just says the parameters were learned from the bootstrap-resampled
+        data as opposed to the original trainind data set.
+    
+3.  Use fit model with parameters
+    $\hat{\boldsymbol{\theta}}^{\text{boot}}$ to estimate parameter or
+    statistic $\hat{\Omega}^{\text{boot}}$ of interest.
+4.  Repeat steps 1-3 $B$ times, obtaining values
+    $\hat{\Omega}_b^{\text{boot}}$ for $b \in \{1,\ldots,B\}$ using fit models
+    with parameters $\hat{\boldsymbol{\theta}}_b^\text{boot}$.
+
+Note that because bootstrap resampling generates new simulated data
+sets of the same size $n$ as the original data set but in which some
+sampling units are repeated, there will necessarily be some sampling
+units that get left out in any particular resampled data set: on
+average, a fraction $\frac{1}{e} \approx 0.368$ of all sampling units
+will be omitted in each bootstrap sample.
+
+Bootstrapping for Performance Estimation 
+----------------------------------------
+
+Bootstrapping can also be used as an alternative to cross-validation
+for estimation of prediction error $\Omega$.
+
+How should we go about this?
+-   We might try to estimate distribution of prediction error
+    $\{\hat{\Omega}_b^{\text{full}}\}$
+-   making predictions with each bootstrap model $b$ with parameters
+    $\hat{\boldsymbol{\theta}}_b^\text{boot}$ applied to full (original)
+    training set $\mathbf{\underline{X}}$.
+
+However, since bootstrap training sets were drawn from the same
+original feature matrix $\mathbf{\underline{X}}$,
+$\{\hat{\Omega}_b^{\text{full}}\}$ will suffer from resubstitution
+bias.
+
+Instead we could follow cross-validation methodology:
+-   use only fit models with parameters $\hat{\boldsymbol{\theta}}_b$ for
+    which
+-   sampling unit $i$ not used in the $b^{\text{th}}$ resampled
+    training set.
+
+Writing $R_b$ to indicate the set of sampling units included in the
+$b^{\text{th}}$ resampled training set:
+$$\label{eq:loo-boot}
+\hat{\Omega}^{\text{loo-boot}} = \frac{1}{n} \sum\limits_{i} {
+    \frac{1}{|\{b \mid i \notin R_b \}|}
+    \sum\limits_{\{b \mid i \notin R_b \}} \hat{\Omega}(\hat{\boldsymbol{\theta}}_b, y_i)
+}$$
+(Aside re: set notation: $\{b \mid i \notin R_b \}$ is set of
+bootstrap iterations $b$ for which sampling unit $i$ does not appear
+in the set of sampling units $R_b$, while $|{b i R_b }|$
+is the number of elements in this set, that is, the number of
+bootstrap iterations which omitted sampling unit $i$.)
+
+But while $\{\hat{\Omega}_b^{\text{full}}\}$ are generally overly
+optimistic, $\hat{\Omega}^{\text{loo-boot}}$ may be too
+*pessimistic*, since each bootstrap case-resampled training set
+generally contains only a fraction $1-\frac{1}{e} \approx 0.632$ of
+the true training sampling units (albeit with some showing up multiple
+times!).
+
+Since repeating training sampling units doesn't generally improve
+models---the repeated units aren't really new data!---we are
+effectively learning models using only $\approx 63.2%$ of the
+available data (albeit randomly upweighting some sampling units
+relative to others).
+[@efron1997improvements] showed that
+$$\label{eq:632-bootstrap}
+\hat{\Omega}^{.632} = 0.368 \, \hat{\Omega}^{\text{resub}} + 0.632 \, \hat{\Omega}^{\text{loo-boot}}$$
+strikes a good balance between the optimism of $\hat{\Omega}^{\text{resub}}$
+and the pessimism of $\hat{\Omega}^{\text{loo-boot}}$ in some situations.
+
+However, in cases where overfitting is more severe,
+[@efron1997improvements] recommend
+$$\label{eq:632plus-bootstrap}
+\hat{\Omega}^{.632+} =
+(1-\hat{w}) \, \hat{\Omega}^{\text{resub}} +
+\hat{w} \, \hat{\Omega}^{\text{loo-boot}}$$
+where $\hat{w} \in [1-\frac{1}{e}, 1]$ depends on the degree of
+overfitting.
+
+There is a standard formula for calculating $\hat{w}$ for estimating
+prediction error using the .632+ bootstrap which you can look up;
+aside from [@efron1997improvements], [@hastie2009elements] has
+a nice treatment.
+
+OK, let's get back to a concrete example: we'll use bootstrapping to
+assess the performance of a select-10-feature-for-SVM-modeling
+pipeline using 25 bootstrap resamples (this is a relatively low number
+for illustration purposes only; most sources suggest $100$
+resamples with bootstrapping, but that takes a while!):
+
+```{r}
+fsSvmCaretized = list(
+    library = "genefilter",
+    type = "Classification",
+    parameters = data.frame(
+        parameter = c("m", "sigma"),
+        class = c("integer", "numeric"),
+        label = c("number features", "inverse kernel width")
+    ),
+    grid = function(x, y, len=NULL, ...) {data.frame(m=10, sigma=0.025)},
+    fit = function(x, y, param, ...) {
+        featSelFit(x, y,
+                   selector = bindArgs(selectByTTest, m=param$m),
+                   fitter = bindArgs(svmFitter, sigma=param$sigma))
+    },
+    predict = function(modelFit, newdata, ...) {predict(modelFit, newdata)},
+    prob = NULL
+)
+caretOut = train(x = data.frame(t(hessTrain)),
+                 y = hessTrainY,
+                 method = fsSvmCaretized,
+                  ## here do only 25 bootstrap resamples for speed;
+                  ## (usually recommended to do >= 100 in real usage!)
+                 trControl = trainControl("boot632", number=25))
+caretOut
+```
+
+Decision Tree Classifiers
+=========================
+
+Decision trees are probably understood by considering an example. A
+single decision tree can be constructed in R using the function
+`rpart` (for "recursive partitioning"). As this function is
+another formula-interface modeling function, we'll go ahead and define
+an adapter function giving it into a simpler (though less flexible) x,
+y argument structure:
+
+```{r}
+library(rpart)
+rpartFitter = function(x, y, control) {
+    rpart(y ~ .,
+          data = data.frame(x, check.names=FALSE),
+          method = "class",   ## use method = "anova" for regression
+          control = control)
+}
+```
+
+The standard process of fitting a decision trees actually performs a
+form of embedded feature selection, but the `rpart` function
+specifically has some unfortunate technical difficulties with very
+high-dimensional data sets, so we'll connect our by now old-hat
+$t$-test feature selector upstream of $rpartFitter$:
+
+```{r}
+fsDecTree = featSelFit(
+    x = t(hessTrain),
+    y = hessTrainY,
+    selector = bindArgs(selectByTTest, m=100),
+    fitter = bindArgs(
+        rpartFitter,
+        control = rpart.control(
+            minsplit = 10,    ## don't split if < 10 sampling units in bin
+            maxdepth = 3      ## split splits of splits but no more!
+        )
+    )
+)
+plot(fsDecTree$fit, uniform=TRUE, margin=0.05)
+text(fsDecTree$fit, use.n=TRUE, all=TRUE, cex=0.8)
+```
+
+Each node of the tree shown is associated with a subset of the set of
+all sampling units. The topmost (or root) node contains all samples,
+which are then split (or partitioned) into those samples for which the
+expression level for probe set 212745_s_at was measured to be \<
+7.673, which flow down to the left node, and those samples with higher
+levels of 212745_s_at expression, which go down the right
+branch. The fitting algorithm selected the probe set 212745_s_at and
+the level 7.673 for the top split because this was determined to be
+the best single split to separate pCR patient samples from RD patient
+samples.
+
+The "recursive" part of recursive partitioning is then to repeat
+this splitting process within each of those sample subpopulations,
+*unless* one of the stopping criteria is met. Stopping criteria
+are usually based on the size and "impurity" of the sample
+subpopulation: If the node is associated with too small a sample
+subpopulation it will not be split, or if the sample subpopulation
+within the node is sufficiently pure in either one outcome class or
+the other (either close to all pCR or close to all RD), there is no
+point in further splitting.
+
+Classification probabilities for any new sample may then be calculated
+by starting at the root and following the branches of the tree
+indicated the sample's feature values until a terminal, or leaf, node
+is reached: the fraction of training set samples in the leaf node with
+classification RD is then the predicted probability that patient from
+which the new sample is derived will suffer from residual invasive
+disease (RD).
+
+```{r}
+fsDecTreeTestPredProbs = predict(fsDecTree, t(hessTest))
+head(fsDecTreeTestPredProbs)
+```
+
+```{r}
+fsDecTreeTestPredClass = predict(fsDecTree, t(hessTest), type="class")
+table(fsDecTreeTestPredClass, hessTestY)
+```
+
+Single decision trees are simple and intuitive but, despite the
+reasonably good results seen just above, have generally not performed
+very well in real world classification tasks. The structure of such
+trees also tends to be very sensitive to small changes in the training
+data; don't be surprised if you get an entirely different tree if a
+single sampling unit is added or removed from the training data set!
+
+There is, however, an approach to machine learning based on multiple
+decision trees which has become very popular in the last few
+decades\...
+
+Bagging: **Bootstrap** **Agg**regat**ing** Models 
+=================================================
+
+We could consider using set of $B$ bootstrap case-resample trained
+models in place of a single model for making predictions.
+Repeat for $b {1,...,B}$:
+1.  Generate $\mathbf{\underline{X}}_b$ by drawing $n$
+    random integers $R_b=\{r_{b i}\}$ with replacement
+    and setting $x_{b ig} = x_{r_{b i} g}$, $y_{b i} = y_{r_{b i}}$.
+2.  Fit model using $\mathbf{\underline{X}}_b$ and $\mathbf{y}_b$ to
+    obtain fitted parameters $\hat{\boldsymbol{\theta}}_b$.
+
+Bagged predictions for new datum with feature vector $\mathbf{x}$ by
+simply averaging together the predictions of each bagged submodel $b$
+with parameters $\hat{\boldsymbol{\theta}}_b$ for features $\mathbf{x}$.
+From [@breiman1996bagging]:
+> For unstable procedures bagging works well ...The evidence,
+> both experimental and theoretical, is that bagging can push a
+> good but unstable procedure a significant step towards optimality.
+> On the other hand, it can slightly degrade the performance of stable
+> procedures.
+
+In this context, "stability" is of the fit model parameters
+$\boldsymbol{\theta}$ with respect to the training data
+$\{\mathbf{x}_i, y_i\}$. Recall that I said in section
+[sec:decision-trees](#Decision-Tree-Classifiers) that decision trees suffered
+from exactly this sort of instability!
+
+In fact the most well-known application of bagging is indeed the
+generation of *random forests* of decision trees
+([@breiman1999random]). A random forest is constructed by
+repeating, for $b {1,...,B}$:
+1.  Generate $\mathbf{\underline{X}}_b$ and $\mathbf{y}_b$ by drawing $n$ random
+    integers $R_b=\{1 \leq r_{b i} \leq n\}$ with replacement and setting
+    $x_{b ig} = x_{r_{b i} g}$ and $y_{b i} = y_{r_{b i}}$.
+2.  Randomly select $m' < m$ of the features and fit a decision tree
+    classifier for $\mathbf{y}_b$ using the columns of feature matrix
+    $\mathbf{\underline{X}}_b$ corresponding to those features.
+    -   $m'$ random features redrawn for each new split.
+    -   Commonly $m' \approx \sqrt{m}$.
+    
+The `randomForest` package in R includes a function of the same name
+which is quite easy to use (and even handles high-dimensional data
+sets smoothly, as it already has a non-formula interface built in):
+
+```{r}
+## install.packages("randomForest")  ## uncomment and run if necessary
+library(randomForest)
+set.seed(321)                        ## replicability
+rf = randomForest(x = data.frame(t(hessTrain), check.names=FALSE),
+                  y = hessTrainY,
+                  nodesize = 10,     ## randomForest version of minsplit
+                  ntree = 100)
+ ## default predict for randomForest is type="class";
+ ## (use type="prob" if you want probabilities in predict call)
+rfPredClass = predict(rf, data.frame(t(hessTest), check.names=FALSE))
+table(rfPredClass, hessTestY)
+```
+
+So\...here we found that a single decision tree combined with upstream
+simple $t$-test feature selection of 100 probe sets outperformed a
+random forest of 100 trees. Don't think this is a typical
+result---random forests have been found to generate very competitive
+ML classifiers in a wide variety of situations, while single decision
+trees generally have not. But it does go to show that it can be hard
+to generalize about ML algorithm performance, especially on relatively
+small data sets like the Hess example here!
+
+Classification Performance Metrics 
+==================================
+
+There are many ways to measure performance for classifiers, of which
+accuracy is only one. Like accuracy, most are based the discrete
+classification label calls. For classifiers which output probability
+scores, this means that some threshold probability $\psi$ (often, but
+certainly not always, 0.5) must be set.
+
+For binary (two-class) classification, when one class can be
+considered "positive" and the other "negative, the cells of the 2x2
+contingency table are often labeled as true positive (TP), true
+negative (TN), false positive (FP), and false negative (FN), where,
+e.g., a false positive is sampling unit which the classifier declares
+positive but for which the true value of the outcome is negative.
+
+We could consider the values of such hard-call metrics over range of
+threshold values $\psi$. The so-called receiver operating
+characteristic (ROC) curve ([@fawcett2006introduction]) does this
+for sensitivity and specificity:
+
+```{r}
+ ## pick 20 test samples to score with pcaSvmFit classifier:
+set.seed(123)
+xfew = t(hessTest[ , sample(colnames(hessTest), 20)])
+yis1 = hessTestY[rownames(xfew)] == "RD"
+names(yis1) = rownames(xfew)
+ ## do the scoring:
+fewPredProbs = predict(pcaSvmFit, xfew, type="prob")[ , "RD"]
+names(fewPredProbs) = rownames(xfew)
+ ## set up vector all threshold values at which a call would change:
+thresholds = c(none=1, sort(fewPredProbs, decreasing=TRUE), all=0)
+ ## calculate number true positives at each threshold:
+tp = sapply(thresholds, function(thresh) {
+    sum(fewPredProbs > thresh & yis1)
+})
+ ## and also number true negatives at each threshold:
+tn = sapply(thresholds, function(thresh) {
+    sum(fewPredProbs <= thresh & !yis1)
+})
+ ## scale these by totals to obtain sens, spec at each threshold value:
+sensitivity = tp / sum(yis1)
+specificity = tn / sum(!yis1)
+```
+
+Having calculated sensitivity and specificity at every meaningful
+threshold value, we can now plot the ROC curve using `ggplot` (I
+should mention that there are several R packages that will do all of
+this work for you, but I want a very specific format for the plot
+here):
+
+```{r}
+ggdata = data.frame(
+    sample = names(sensitivity),
+    actual_class = as.numeric(yis1[names(sensitivity)]),
+    score = fewPredProbs[names(sensitivity)],
+    sensitivity = sensitivity,
+    specificity = specificity
+)
+gg = ggplot(ggdata, aes(x=1-specificity, y=sensitivity))
+gg = gg + geom_line(aes(color=score), size=1, alpha=0.75)
+gg = gg + geom_text(mapping = aes(label=sample),
+                    data = ggdata[ggdata$actual_class == 1, ],
+                    color = "red")
+gg = gg + geom_text(mapping = aes(label=sample),
+                    data = ggdata[ggdata$actual_class == 0, ],
+                    angle = -90,
+                    color = "black")
+gg = gg + geom_hline(mapping = aes(yintercept=sensitivity),
+                     data = ggdata[ggdata$actual_class == 1, ],
+                     alpha = 0.35,
+                     size = 0.25)
+gg = gg + geom_vline(mapping = aes(xintercept=1-specificity),
+                     data = ggdata[ggdata$actual_class == 0, ],
+                     alpha = 0.35,
+                     size = 0.25)
+gg = gg + scale_color_gradientn(
+    colors = c("orangered", "goldenrod", "seagreen", "dodgerblue",
+               rgb(96/255, 96/255, 96/255))
+)
+print(gg + theme_classic())
+```
+
+You can see in this plot that there are 13 RD (or
+"positive") and 7 pCR ("negative") samples in the
+subampled test data `xfew`: 5 of the
+7 negative samples---M146, M141, M485, M331, M316---have
+lower prediction scores than any of the 13 positive samples.
+Thus, there are 5 times 13 =
+65 light gray vertices below the
+ROC curve in the 5 columns on the right of
+the plot.
+
+Adding to this the 9 light gray verices below the ROC curve along the
+vertical line labeled by sample M442, corresponding to the 9 positive
+samples with scores higher than that of the negative sample M442, we
+obtain 74 total ways of pairing one of the positive samples with one
+of the negative samples for which the positive sample has a higher
+score than the negative.
+
+This corresponds to a fraction of 74 out of the 91, or 0.8132, vertices in the plot
+which lie below the curve. This shows that the area under the curve (AUC)
+for the ROC curve is 0.8132,
+which must also be the likelihood that if we randomly pick one positive sample
+and one negative sample from these 20 the positive sample will have a higher
+score than the negative.
+
+The ROC AUC score is one the most popular metrics for assessing
+classifier performance. Beyond being threshold-independent---since it
+aggregates over all possible thresholds by considering the full ROC
+curve---it has the property that an uninformative classifier will have
+an AUC of 0.5 even when the two classes are unbalanced (more of one
+than the other), as they are in the Hess data (almost 3x as many RD as
+pCR).
+
+This is not the case with accuracy: if you just assign all sampling
+units the same classification score (ignoring all feature values) and
+then set the classification threshold so that they are all called the
+more common class, the accuracy will be the > 0.5 fraction assigned to
+that class (almost 0.75 in the case of the Hess set!).
+
+We don't usually want to do all of the work we did above to assess the
+AUC score for a classifier; here are two easier ways to do it:
+
+```{r}
+ ## calculate ROC-AUC using pROC::auc
+## install.packages("pROC")  ## uncomment and run if necessary
+library(pROC)
+pROC::auc(as.numeric(yis1), fewPredProbs)
+```
+
+```{r}
+ ## or can calculate from wilcox.test statistic:
+ ## (this nonparametric test is based on same underlying information):
+wilcoxResults = wilcox.test(fewPredProbs[yis1], fewPredProbs[!yis1])
+wilcoxResults$statistic / (sum(yis1) * sum(!yis1))
+```
+
+(In other words, the ROC AUC score is essentially a more interpretable
+rescaling of the Wilcoxon-Mann-Whitney test (also known as the
+Mann-Whitney U test) statistic. This makes sense in light of the
+intepretation of AUC as the chance that a randomly chosen positive
+case has a higher classification score than does a randomly chosen
+negative case, since the Wilcoxon-Mann-Whitney test is based on this
+same idea.)
+
+Of course, we can get better estimate of the AUC using the
+*whole* test set instead of just `xfew`:
+
+```{r}
+pcaSvmTestPredProbs = predict(pcaSvmFit, t(hessTest), type="prob")
+pROC::auc(as.numeric(hessTestY), pcaSvmTestPredProbs[ , "RD"])
+```
+
+So, a bit worse---but this still shows thus that even though
+`pcaSvmFit` only managed to correctly call 2 of the 13 test pCR
+samples as negative:
+
+```{r}
+table(pcaSvmTestPredictionClass, hessTestY)
+```
+
+the scores of the negative (pCR) samples still tend to be lower than
+the scores of the positive (RD) samples, even if they are above the
+default threshold $\psi=0.5$.
+
+Wrap-up: Comparing Models by AUC 
+--------------------------------
+
+Let's go back and try a quick head-to-head comparison of five of the
+different classification models we've covered. First let's make sure
+we have all of the necessary libraries loaded:
+
+```{r}
+library(caret)         ## knn3
+library(glmnet)
+library(kernlab)       ## ksvm
+library(HiDimDA)       ## Dlda
+library(randomForest)
+```
+
+We're going to use on the `apply` family of functions---`sapply`
+this time---to loop through the five different classification
+strategies. This function wants to be supplied a list to work with,
+and if the list has names, `sapply` will retain those names in
+the output data structure, so we'll assign those as well:
+
+```{r}
+downstreamFitters = list(
+    knn = bindArgs(knn3, k=9),
+    l2logistic = bindArgs(regularizedGLM, family=binomial, alpha=0),
+    dlda = Dlda,
+    svm = svmFitter,
+    randomForest = bindArgs(randomForest, ntree=500, nodesize=10)
+)
+```
+
+In order to compute ROC AUC scores, we'll need to extract prediction
+probability scores from each model; because different R packages
+handle probabilistic prediction differently, it is useful to define a
+convenience function to handle all of the relevant cases and return
+the probability scores in a unified format. We'll return these as
+simple vectors containing the predicted probability of RD:
+
+```{r}
+ ## need single function to make probabilistic predictions
+ ## from all of the classifiers, some require special handling:
+predictProbs = function(modelFit, newdata, ...) {
+    testPredProbs = predict(modelFit, newdata, type="prob")
+    if (is.list(testPredProbs) && ("Z" %in% names(testPredProbs))) {
+         ## HiDimDA::Dlda doesn't directly provide probability scores,
+         ## but does provide related scores in list element Z
+        testPredProbs = testPredProbs$Z[ , "LD1"]
+    }
+    if (is.matrix(testPredProbs)) {
+        testPredProbs = testPredProbs[ , "RD"]
+    }
+    return(testPredProbs)
+}
+```
+
+Now we're ready to hook up a common upstream feature selection
+strategy (guess which one we'll use!) to each of the
+`downstreamFitters`, fit the resulting pipeline, make predictions on
+the test set, and calculate the resulting AUC scores:
+
+```{r}
+set.seed(123)
+fsAucs = sapply(downstreamFitters, function(downstreamFitter) {
+    fitModel = featSelFit(
+        x = data.frame(t(hessTrain), check.names=FALSE),
+        y = hessTrainY,
+        selector = bindArgs(selectByTTest, m=30),
+        fitter = downstreamFitter
+    )
+    return(as.numeric(pROC::auc(
+        as.numeric(hessTestY),
+        predictProbs(fitModel, data.frame(t(hessTest), check.names=FALSE))
+    )))
+})
+fsAucs
+```
+
+Interesting to note that the simplest strategy, knn, ends up winning
+according to this comparison! Lots of caveats here: the results might
+look very different with different methods of feature selection or
+extraction, different numbers of features retained, different settings
+of the various modeling parameters (number of nearest neighbors, SVM
+cost or sigma parameters, number of trees in random forests, etc.), so
+I wouldn't advise reading too much into this beyond this: sometimes
+simplicity works.
+
