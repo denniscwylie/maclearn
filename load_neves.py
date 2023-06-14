@@ -22,4 +22,4 @@ nevesExpr.columns = betterSampleNames
 nevesAnnot.index = betterSampleNames
 
  ## use more descriptive names for genes
-nevesExpr.index = dmGenes["GeneName"]
+nevesExpr.index = dmGenes["GeneName"].astype("str")
