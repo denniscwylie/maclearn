@@ -23,7 +23,7 @@ Linear models, including logistic regression and DLDA, are very useful
 in many contexts but do have some characteristics which can be
 limiting. *Support vector machines*, or SVMs
 ([@cortes1995support; @hastie2009elements]), are a type of
-supervised classifcation algorithm which address two particular
+supervised classification algorithm which address two particular
 limitations:
 1.  The parameters fit by classical linear classification algorithms
     are generally sensitive to extremely easy-to-call sampling units
@@ -212,7 +212,7 @@ consists of:
     $\mathbf{\underline{X}}^{\text{boot}}$ and outcome vector
     $\mathbf{y}^{\text{boot}}$ to learn parameters
     $\mathbf{y}^{\text{boot}}$
-    -   $\boldsymbol{\theta}$ is just way of writing set of all
+    -   $\boldsymbol{\theta}$ is just way of writing the set of all
         parameters needed by model pulled together into one big vector,
         while
     -   the "hat" on top of $\hat{\boldsymbol{\theta}}$ indicates
@@ -220,7 +220,7 @@ consists of:
         parameter values $\boldsymbol{\theta}$, and
     -   superscript "boot" on $\hat{\boldsymbol{\theta}}^{\text{boot}}$
         just says the parameters were learned from the bootstrap-resampled
-        data as opposed to the original trainind data set.
+        data as opposed to the original training data set.
     
 3.  Use fit model with parameters
     $\hat{\boldsymbol{\theta}}^{\text{boot}}$ to estimate parameter or
@@ -269,7 +269,7 @@ $$\label{eq:loo-boot}
 }$$
 (Aside re: set notation: $\{b \mid i \notin R_b \}$ is set of
 bootstrap iterations $b$ for which sampling unit $i$ does not appear
-in the set of sampling units $R_b$, while $|{b i R_b }|$
+in the set of sampling units $R_b$, while $|\{b \mid i \notin R_b \}|$
 is the number of elements in this set, that is, the number of
 bootstrap iterations which omitted sampling unit $i$.)
 
@@ -282,7 +282,7 @@ times!).
 
 Since repeating training sampling units doesn't generally improve
 models---the repeated units aren't really new data!---we are
-effectively learning models using only $\approx 63.2%$ of the
+effectively learning models using only $\approx 63.2\\%$ of the
 available data (albeit randomly upweighting some sampling units
 relative to others).
 [@efron1997improvements] showed that
